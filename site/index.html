@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GlobalTCView: tropical cyclones today, and the winds around them</title>
+<meta name="description" content="Is a tropical cyclone heading your way? Live storms, plain-language warnings context, a live map of winds, pressure, moisture and sea temperature, and how the atmosphere works.">
+<meta property="og:title" content="GlobalTCView: tropical cyclones today">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌀</text></svg>">
+<link rel="alternate" type="application/rss+xml" title="Active tropical cyclones" href="feed.xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+<link rel="stylesheet" href="style.css?v=__BUILD__">
+<link rel="stylesheet" href="shell.css?v=__BUILD__">
+<script>try{var t=localStorage.getItem("tc-theme");document.documentElement.dataset.theme=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}catch(e){}</script>
+</head>
+<body data-view="today">
+<a class="skip" href="#main">Skip to content</a>
+<div id="banner" class="banner" role="alert" hidden></div>
+
+<header class="site-hdr">
+  <a id="brand" class="wordmark" href="#today" aria-label="GlobalTCView, today's overview">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 9a7 7 0 0 1 7 7M16 23a7 7 0 0 1-7-7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="16" cy="16" r="3.2" fill="currentColor"/></svg>
+    <span id="brand-name">GlobalTCView</span>
+  </a>
+  <nav class="views" aria-label="Sections">
+    <a href="#today" data-view="today" data-i18n="nav.today">Today</a>
+    <a href="#map" data-view="map" data-i18n="nav.map">Live map</a>
+    <a href="#storms" data-view="analysis" data-i18n="nav.analysis">Storm analysis</a>
+    <a href="#learn" data-view="learn" data-i18n="nav.learn">Learn</a>
+  </nav>
+  <div class="search" role="search">
+    <input id="q" type="search" placeholder="Find a storm, basin or year" data-i18n-ph="search.ph" aria-label="Find a storm" autocomplete="off">
+    <kbd>Ctrl K</kbd>
+    <ul id="q-results" class="q-results" role="listbox" hidden></ul>
+  </div>
+  <label class="sr" for="lang">Language</label>
+  <select id="lang" class="lang" aria-label="Language"></select>
+  <button type="button" id="theme" class="tb wide theme" aria-label="Switch between light and dark">Dark</button>
+</header>
+
+<main id="main">
+<!-- ======================= TODAY ======================= -->
+<section id="view-today" class="view today" aria-labelledby="t-headline">
+  <div class="today-top">
+    <div class="today-lede">
+      <h1 id="t-headline">Checking today's tropical cyclones…</h1>
+      <p id="t-sub" class="lede"></p>
+      <p class="updated" id="t-updated"></p>
+    </div>
+    <section class="place" aria-labelledby="place-h">
+      <h2 id="place-h" data-i18n="place.h">Is a cyclone heading for you?</h2>
+      <p class="muted" data-i18n="place.p">Choose your town, or let your browser find you. Your place is kept only on this device.</p>
+      <div class="place-row">
+        <button type="button" id="geo" class="btn" data-i18n="place.geo">Use my location</button>
+        <label class="sr" for="city">Choose a town</label>
+        <select id="city"><option value="" data-i18n="place.choose">Choose a town…</option></select>
+      </div>
+      <div id="place-result" class="place-result" aria-live="polite"></div>
+      <div id="towncast" class="towncast" hidden></div>
+    </section>
+  </div>
+
+  <section class="storms-today" aria-labelledby="st-h">
+    <h2 id="st-h" data-i18n="st.h">Storms right now</h2>
+    <ol id="t-storms" class="rows"></ol>
+  </section>
+
+  <section class="prepare" aria-labelledby="pr-h">
+    <h2 id="pr-h" data-i18n="pr.h">Be ready</h2>
+    <p class="muted" data-i18n="pr.p">General guidance. Always follow your national weather service and local authorities.</p>
+    <div class="prep-cols">
+      <div><h3 data-i18n="pr.h1">When a cyclone may come</h3>
+        <ul><li data-i18n="pr.1a">Follow official bulletins on radio, TV or your weather service's app.</li><li data-i18n="pr.1b">Keep drinking water, food, medicines, a torch, a power bank and copies of documents ready for three days.</li>
+            <li data-i18n="pr.1c">Know your nearest cyclone shelter and the safest route to it.</li><li data-i18n="pr.1d">Tie down or bring in loose objects that strong wind can throw.</li></ul></div>
+      <div><h3 data-i18n="pr.h2">When a warning is issued</h3>
+        <ul><li data-i18n="pr.2a">Move to a shelter or strong building early if you live near the sea, in a low area or in a weak house.</li><li data-i18n="pr.2b">Fishers: do not go to sea, and return to harbour.</li>
+            <li data-i18n="pr.2c">Stay indoors, away from windows. A sudden calm can be the eye: the wind will return from the other side.</li><li data-i18n="pr.2d">Switch off electricity and gas if water may enter.</li></ul></div>
+      <div><h3 data-i18n="pr.h3">After it passes</h3>
+        <ul><li data-i18n="pr.3a">Wait for the all-clear before going out.</li><li data-i18n="pr.3b">Keep away from fallen power lines, floodwater and damaged buildings.</li>
+            <li data-i18n="pr.3c">Drink only boiled or treated water.</li><li data-i18n="pr.3d">Check on elderly neighbours and people living alone.</li></ul></div>
+    </div>
+  </section>
+
+  <section class="about-site" aria-labelledby="ab-h">
+    <h2 id="ab-h" data-i18n="ab.h">What this site is</h2>
+    <p data-i18n-html="ab.p1">A research project that follows every tropical cyclone on Earth, rebuilt from NOAA's GFS weather model and official storm advisories several times a day.
+      The <a href="#map">live map</a> shows the winds, pressure, moisture and sea temperature that steer and feed storms. <a href="#storms">Storm analysis</a> has 3D
+      views of each storm's flow, its environment and an impact estimate. <a href="#learn">Learn</a> explains how it all works.</p>
+    <p class="muted" data-i18n="ab.p2">It is not an official warning service. For warnings, use your national meteorological service.</p>
+  </section>
+  <footer class="site-ftr"><p><span data-i18n="ftr">GlobalTCView by Devashish, IIT Hyderabad. Data: NOAA GFS and NCEP TCVitals, NASA, IBTrACS, GHSL, World Bank. Open source.</span> <a href="feed.xml">RSS feed</a></p></footer>
+</section>
+
+<!-- ======================= LIVE MAP ======================= -->
+<section id="view-map" class="view mapview" aria-label="Live map of the atmosphere">
+  <div id="wx" class="wx-stage" role="img" aria-label="Flat map with wind streamlines and weather layers" hidden></div>
+  <div id="wx3d" class="wx-stage" role="img" aria-label="3D globe with wind streamlines at the chosen height"></div>
+  <aside class="layers" aria-labelledby="ly-h">
+    <div class="viewseg" role="group" aria-label="Map view">
+      <button type="button" class="seg" data-mode="3d" aria-pressed="true" data-i18n="v.3d">3D globe</button>
+      <button type="button" class="seg" data-mode="2d" aria-pressed="false" data-i18n="v.2d">Flat map</button>
+    </div>
+    <label class="tgl" id="stack-row"><input type="checkbox" id="ly-stack"> <span data-i18n="v.stack">All heights at once (3D vortex)</span></label>
+    <h2 id="ly-h" data-i18n="ly.h">Layers</h2>
+    <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-cont" checked> <span id="ly-cont-label">Pressure: isobars, highs and lows</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-storms" checked> <span data-i18n="ly.storms">Tropical cyclones</span></label>
+    <h3 data-i18n="ly.colour">Colour the map by</h3>
+    <label class="opt"><input type="radio" name="scalar" value="speed" checked> <span data-i18n="ly.speed">Wind speed</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="rh"> <span data-i18n="ly.rh">Humidity at this level</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="sst"> <span data-i18n="ly.sst">Sea surface temperature</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="tmp"> <span data-i18n="ly.tmp">Temperature at this height</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="vort"> <span data-i18n="ly.vort">Spin of the air (vorticity)</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="shear"> <span data-i18n="ly.shear">Wind shear, 850–200 hPa</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="cape"> <span data-i18n="ly.cape">Thunderstorm energy (CAPE)</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="rain"> <span data-i18n="ly.rain">Rain in 6 hours (forecast)</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="none"> <span data-i18n="ly.none">Nothing</span></label>
+    <h3 data-i18n="ly.explain">Explain the circulation</h3>
+    <button type="button" class="chip" data-ov="cells" aria-pressed="false" data-i18n="ov.cells">Hadley, Ferrel and polar cells</button>
+    <button type="button" class="chip" data-ov="walker" aria-pressed="false" data-i18n="ov.walker">Walker circulation</button>
+    <button type="button" class="chip" data-ov="nino" aria-pressed="false" data-i18n="ov.nino">El Niño and Indian Ocean Dipole regions</button>
+  </aside>
+  <div class="timebar" role="group" aria-labelledby="tm-l">
+    <button type="button" class="tb" id="tm-play" aria-label="Play through the days">▶</button>
+    <label id="tm-l" for="tm" class="sr">Time</label>
+    <input type="range" id="tm" min="0" max="0" step="1" value="0">
+    <output id="tm-out" for="tm"></output>
+  </div>
+  <div class="level" role="group" aria-labelledby="lv-l">
+    <label id="lv-l" for="lv" data-i18n="lv.label">Height in the atmosphere</label>
+    <input type="range" id="lv" min="0" max="5" step="1" value="1">
+    <output id="lv-out" for="lv">850 hPa, about 1.5 km up</output>
+  </div>
+  <div class="wx-legend" id="wx-legend"></div>
+  <div class="wx-zoom"><button type="button" class="tb" id="wz-in" aria-label="Zoom in">+</button><button type="button" class="tb" id="wz-out" aria-label="Zoom out">−</button></div>
+  <section class="wx-info" id="wx-info" hidden aria-live="polite"><button type="button" class="tb close" id="wx-info-x" aria-label="Close">×</button><div id="wx-info-body"></div></section>
+  <p class="wx-time" id="wx-time"></p>
+</section>
+
+<!-- ======================= STORM ANALYSIS (research dashboard) ======================= -->
+<section id="view-analysis" class="view analysis" aria-label="Storm analysis">
+  <div class="subbar">
+    <p class="muted small">3D flow, environment, forecast, history and impact for each storm.</p>
+    <nav class="menu" aria-label="Analysis tools">
+      <button type="button" data-open="season">Season</button>
+      <button type="button" data-open="archive">Archive</button>
+      <button type="button" data-open="guide">Reading the 3D view</button>
+      <button type="button" data-open="method">Impact method</button>
+      <button type="button" data-open="about">About</button>
+    </nav>
+  </div>
+<div class="app" id="app">
+
+  <!-- ============ LEFT: STORMS ============ -->
+  <aside class="side" aria-label="Storms">
+    <div class="side-head">
+      <h2 id="headline">Storms</h2>
+      <p id="status" class="muted small"></p>
+      <p id="climate-line" class="climate-line small" hidden></p>
+    </div>
+    <div class="filters" id="basins" role="group" aria-label="Filter by basin"></div>
+    <ol class="slist" id="active-list" aria-label="Active storms"></ol>
+    <h3 class="side-sub">Pinned</h3>
+    <ol class="slist mini" id="pinned-list" aria-label="Pinned storms"></ol>
+    <h3 class="side-sub">Recently ended</h3>
+    <ol class="slist mini" id="recent-list" aria-label="Recently ended storms"></ol>
+  </aside>
+
+  <!-- ============ CENTRE: STAGE ============ -->
+  <section class="stage" aria-label="Main view">
+    <div class="stage-tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-stage="globe" aria-selected="true"><span>1</span>Globe</button>
+      <button role="tab" data-stage="flow" aria-selected="false"><span>2</span>3D flow</button>
+      <button role="tab" data-stage="map" aria-selected="false"><span>3</span>Track map</button>
+      <button role="tab" data-stage="compare" aria-selected="false"><span>4</span>Compare</button>
+      <button role="tab" data-stage="impact" aria-selected="false"><span>5</span>Impact</button>
+    </div>
+    <div class="pane" id="pane-globe">
+      <div id="cesium" class="cesium" role="img" aria-label="High-resolution globe with active tropical cyclones" hidden></div>
+      <canvas id="earth-canvas" role="img" aria-label="3D Earth with active tropical cyclones"></canvas>
+      <div class="base-pick" id="base-pick" role="group" aria-label="Globe imagery" hidden>
+        <button type="button" class="tb wide" data-base="viirs" aria-pressed="true">Satellite of the day</button>
+        <button type="button" class="tb wide" data-base="blue" aria-pressed="false">Blue Marble</button>
+        <button type="button" class="tb wide" data-base="ir" aria-pressed="false" id="base-ir" hidden>Infrared now</button>
+      </div>
+      <div id="earth-labels" class="earth-labels"></div>
+      <div class="pane-tools">
+        <button type="button" id="e-in" class="tb" aria-label="Zoom in">+</button>
+        <button type="button" id="e-out" class="tb" aria-label="Zoom out">−</button>
+        <button type="button" id="e-spin" class="tb wide" aria-pressed="false">Spin</button>
+        <button type="button" id="e-reset" class="tb wide">Reset view</button>
+      </div>
+      <p class="pane-note" id="globe-note">Drag to turn and tilt. Select a storm to open it.</p>
+    </div>
+    <div class="pane" id="pane-flow" hidden>
+      <video id="v-video" muted playsinline preload="metadata"></video>
+      <p class="pane-note" id="flow-note"></p>
+    </div>
+    <div class="pane" id="pane-map" hidden>
+      <svg id="map" role="img" aria-label="Regional map of the storm track"></svg>
+      <div class="pane-tools"><button type="button" id="m-in" class="tb" aria-label="Zoom in">+</button><button type="button" id="m-out" class="tb" aria-label="Zoom out">−</button></div>
+      <div class="map-toggles" role="group" aria-label="Map layers">
+        <label><input type="checkbox" id="mt-fc" checked> Forecast (GEFS)</label>
+        <label><input type="checkbox" id="mt-past"> Past storms nearby</label>
+      </div>
+    </div>
+    <div class="pane cmp" id="pane-compare" hidden>
+      <div class="cmp-bar">
+        <label>Left <select id="cmp-a"></select></label>
+        <label>Right <select id="cmp-b"></select></label>
+        <button type="button" id="cmp-play" class="tb wide">▶ Play both</button>
+      </div>
+      <div class="cmp-grid">
+        <figure><video id="cmp-va" muted playsinline preload="metadata"></video><figcaption id="cmp-ia"></figcaption><div class="mini" id="cmp-ca"></div></figure>
+        <figure><video id="cmp-vb" muted playsinline preload="metadata"></video><figcaption id="cmp-ib"></figcaption><div class="mini" id="cmp-cb"></div></figure>
+      </div>
+      <input type="range" id="cmp-range" min="0" max="1000" value="0" aria-label="Position in both videos">
+    </div>
+    <div class="pane" id="pane-impact" hidden>
+      <canvas id="imp-canvas" role="img" aria-label="Map of the modelled wind footprint, population, vulnerability and risk"></canvas>
+      <div class="imp-layers" role="group" aria-label="Impact layers">
+        <button type="button" class="tb wide" data-layer="wind" aria-pressed="true">Wind footprint</button>
+        <button type="button" class="tb wide" data-layer="rain" aria-pressed="false">Rain total</button>
+        <button type="button" class="tb wide" data-layer="rain24" aria-pressed="false">Rain in 24 h</button>
+        <button type="button" class="tb wide" data-layer="surge" aria-pressed="false">Storm surge</button>
+        <button type="button" class="tb wide" data-layer="pop" aria-pressed="false">Population</button>
+        <button type="button" class="tb wide" data-layer="vuln" aria-pressed="false">Vulnerability</button>
+        <button type="button" class="tb wide" data-layer="risk" aria-pressed="false">Risk index</button>
+      </div>
+      <div class="imp-legend" id="imp-legend"></div>
+      <p class="imp-empty" id="imp-empty" hidden></p>
+      <p class="imp-tip" id="imp-tip" aria-live="polite"></p>
+      <div class="imp-zoom" role="group" aria-label="Zoom the impact map">
+        <button type="button" class="tb" id="iz-in" aria-label="Zoom in">+</button>
+        <button type="button" class="tb" id="iz-out" aria-label="Zoom out">−</button>
+        <button type="button" class="tb wide" id="iz-reset" aria-label="Show the whole footprint">Reset</button>
+      </div>
+      <p class="imp-hint">Scroll or pinch to zoom · drag to move · double-click to zoom in</p>
+      <p class="imp-warn">Research estimate from wind and GFS-rain models. Not a warning or a damage assessment: follow your national meteorological service.</p>
+    </div>
+    <ol class="legend" aria-label="Intensity colours">
+      <li><i style="--c:var(--td)"></i>TD</li><li><i style="--c:var(--ts)"></i>TS</li><li><i style="--c:var(--c1)"></i>1</li><li><i style="--c:var(--c2)"></i>2</li>
+      <li><i style="--c:var(--c3)"></i>3</li><li><i style="--c:var(--c4)"></i>4</li><li><i style="--c:var(--c5)"></i>5</li>
+    </ol>
+  </section>
+
+  <!-- ============ BOTTOM: SHARED TIMELINE ============ -->
+  <section class="tl" aria-label="Timeline">
+    <div class="tl-bar">
+      <button type="button" id="t-play" class="tb" aria-label="Play">▶</button>
+      <button type="button" id="t-back" class="tb" aria-label="Back one hour">−1 h</button>
+      <button type="button" id="t-fwd" class="tb" aria-label="Forward one hour">+1 h</button>
+      <label class="small muted">Speed <select id="t-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      <strong id="t-time" class="t-time">—</strong>
+      <span id="t-note" class="small muted"></span>
+      <button type="button" id="t-latest" class="tb wide">Latest</button>
+    </div>
+    <div id="timeline" class="timeline"></div>
+  </section>
+
+  <!-- ============ RIGHT: INSPECTOR ============ -->
+  <aside class="insp" aria-label="Storm details">
+    <div class="i-head">
+      <div>
+        <p class="kicker" id="i-kicker"></p>
+        <h2 id="i-name">—</h2>
+      </div>
+      <button type="button" id="pin" class="tb wide" aria-pressed="false">☆ Pin</button>
+    </div>
+    <div class="tags" id="i-tags"></div>
+    <div class="metrics" id="metrics"></div>
+    <div class="checks-box">
+      <p class="checks-title" id="checks-title">Conditions at this hour</p>
+      <ul class="checks" id="checks"></ul>
+      <p class="small muted">Indicative thresholds often used in rapid-intensification studies. Not a forecast.</p>
+    </div>
+    <div class="imp-box" id="imp-box" hidden>
+      <p class="checks-title">Exposure (indicative) <button type="button" class="linkish small" data-open="method">method</button></p>
+      <div class="imp-nums">
+        <div><span>People in winds ≥ 34 kt</span><b id="imp-34">—</b></div>
+        <div><span>People in winds ≥ 64 kt</span><b id="imp-64">—</b></div>
+        <div><span>Highest risk index</span><b id="imp-rmax">—</b></div>
+        <div><span>People in high or very high risk</span><b id="imp-rhigh">—</b></div>
+        <div><span>People in very heavy rain (≥ 115.6 mm/day)</span><b id="imp-rv">—</b></div>
+        <div><span>People in extremely heavy rain (≥ 204.5 mm/day)</span><b id="imp-rx">—</b></div>
+        <div><span>People in high storm-surge risk areas</span><b id="imp-sg">—</b></div>
+      </div>
+      <ul class="imp-countries" id="imp-countries"></ul>
+      <p class="small muted" id="imp-note">Up to the timeline's hour, from the modelled wind footprint and GHSL population.</p>
+    </div>
+    <div class="i-tabs" role="tablist" aria-label="More about this storm">
+      <button role="tab" data-itab="summary" aria-selected="true">Summary</button>
+      <button role="tab" data-itab="forecast" aria-selected="false">Forecast</button>
+      <button role="tab" data-itab="history" aria-selected="false">History</button>
+      <button role="tab" data-itab="files" aria-selected="false">Files</button>
+    </div>
+    <div class="i-pane" id="itab-summary"></div>
+    <div class="i-pane" id="itab-forecast" hidden></div>
+    <div class="i-pane" id="itab-history" hidden></div>
+    <div class="i-pane" id="itab-files" hidden></div>
+  </aside>
+</div>
+
+</section>
+
+<!-- ======================= LEARN ======================= -->
+<section id="view-learn" class="view learn" aria-labelledby="learn-h">
+  <article class="essay">
+    <h1 id="learn-h" data-i18n="learn.h">How the atmosphere makes and moves tropical cyclones</h1>
+    <p class="lede" data-i18n="learn.lede">Five short explanations, each linked to what you can see on the live map today.</p>
+
+    <section id="l-cells" aria-labelledby="l1">
+      <h2 id="l1" data-i18n="learn.h1">The three circulation cells</h2>
+      <p>The tropics receive far more sunlight than the poles. The atmosphere evens this out by turning over in three great loops in each hemisphere.</p>
+      <figure class="diagram" id="fig-cells"></figure>
+      <p>In the <strong>Hadley cell</strong>, air rises near the equator, where the trade winds meet in a band of towering clouds called the
+        Intertropical Convergence Zone (ITCZ). It flows towards the poles high up, sinks around 30° latitude, and returns along the surface as the trade winds.
+        That sinking air makes the subtropical highs and many of the world's deserts. The <strong>Ferrel cell</strong> between about 30° and 60° is driven
+        by the other two; at the surface it gives the westerlies. The <strong>polar cell</strong> sinks cold air over the poles.</p>
+      <p>Most tropical cyclones form on the equator side of the subtropical highs, in the moist air of the Hadley cell, and are steered by the winds around those highs.</p>
+      <button type="button" class="btn" data-goto="cells">Show the cells on the live map</button>
+    </section>
+
+    <section id="l-walker" aria-labelledby="l2">
+      <h2 id="l2" data-i18n="learn.h2">The Walker circulation, El Niño and the Indian Ocean Dipole</h2>
+      <p>Along the equator there is a second, east–west loop. Normally the trade winds push warm water to the western Pacific, where air rises and rain is heavy;
+        it sinks over the cooler eastern Pacific. This is the <strong>Walker circulation</strong>.</p>
+      <figure class="diagram" id="fig-walker"></figure>
+      <p>During <strong>El Niño</strong> the trade winds weaken, warm water spreads east, and the rising branch shifts towards the central Pacific. During
+        <strong>La Niña</strong> the normal pattern is stronger. Scientists track this with the sea temperature in the <strong>Niño 3.4 region</strong>
+        (5°S–5°N, 170°W–120°W): half a degree above or below normal for several months marks El Niño or La Niña.</p>
+      <p>The Indian Ocean has its own see-saw, the <strong>Indian Ocean Dipole</strong>, measured by the difference in sea temperature between a western and an eastern box.
+        Both patterns shift where and how often cyclones form, including over the Bay of Bengal and the Arabian Sea.</p>
+      <p id="l-enso-now" class="now-note" hidden></p>
+      <button type="button" class="btn" data-goto="walker">Show the Walker circulation</button>
+      <button type="button" class="btn ghost" data-goto="nino">Show the Niño 3.4 and dipole regions</button>
+    </section>
+
+    <section id="l-tc" aria-labelledby="l3">
+      <h2 id="l3" data-i18n="learn.h3">What a tropical cyclone needs</h2>
+      <figure class="diagram" id="fig-tc"></figure>
+      <ul class="ingredients">
+        <li><strong>Warm sea water</strong>, at least about 26.5 °C. On the live map, colour by sea surface temperature: the dashed white line marks 26.5 °C.</li>
+        <li><strong>Moist air</strong> through a deep layer. Colour the map by water vapour to see it.</li>
+        <li><strong>Weak vertical wind shear</strong>: the wind should not change much between the lower and upper atmosphere, or it tears the storm apart. Compare 850 and 200 hPa on the live map.</li>
+        <li><strong>A spinning start</strong>: an existing disturbance away from the equator, where the Earth's rotation can start the swirl.</li>
+      </ul>
+      <p>When these come together, warm moist air rises in thunderstorms, the pressure falls, the winds speed up and draw in more moist air. In the strongest storms
+        an eye forms: a calm, clear centre surrounded by the eyewall, where the winds are fiercest.</p>
+      <button type="button" class="btn" data-goto="sst">Show sea surface temperature</button>
+    </section>
+
+    <section id="l-scale" aria-labelledby="l4">
+      <h2 id="l4" data-i18n="learn.h4">How strong is it?</h2>
+      <p>Different agencies average the wind over different times, so their numbers differ slightly. In the North Indian Ocean, the India Meteorological Department uses these classes (3-minute winds):</p>
+      <table class="scale">
+        <tr><th>Class</th><th>Wind</th><th>What it can do</th></tr>
+        <tr><td>Depression, Deep Depression</td><td>31–61 km/h</td><td>Heavy rain, rough sea</td></tr>
+        <tr><td>Cyclonic Storm</td><td>62–88 km/h</td><td>Damage to huts and trees, very rough sea</td></tr>
+        <tr><td>Severe Cyclonic Storm</td><td>89–117 km/h</td><td>Damage to thatched roofs, power and communication lines</td></tr>
+        <tr><td>Very Severe Cyclonic Storm</td><td>118–166 km/h</td><td>Extensive damage to weak houses, roads and crops; storm surge</td></tr>
+        <tr><td>Extremely Severe Cyclonic Storm</td><td>167–221 km/h</td><td>Large-scale damage; high storm surge</td></tr>
+        <tr><td>Super Cyclonic Storm</td><td>222 km/h or more</td><td>Catastrophic damage and surge</td></tr>
+      </table>
+      <p class="muted small">Elsewhere the Saffir–Simpson scale (1-minute winds) is used: category 1 from 119 km/h to category 5 at 252 km/h or more.</p>
+    </section>
+
+    <section id="l-read" aria-labelledby="l5">
+      <h2 id="l5" data-i18n="learn.h5">Reading the live map</h2>
+      <p>The moving lines are the wind at the chosen height. Near the surface, winds blow almost along the isobars, anticlockwise around lows in the Northern Hemisphere
+        and clockwise in the Southern. Higher up you can see the jet streams, and the outflow above strong storms.</p>
+      <p>The white lines are <strong>isobars</strong> (lines of equal pressure at sea level) near the surface, and lines of equal <strong>height</strong> of the pressure level higher up:
+        low heights are troughs, high heights are ridges. <strong>H</strong> and <strong>L</strong> mark highs and lows. Click anywhere on the map to read the values there.</p>
+    </section>
+  </article>
+</section>
+</main>
+
+<!-- ============ DRAWERS ============ -->
+<dialog id="dlg" class="drawer" aria-labelledby="dlg-title">
+  <div class="d-head"><h2 id="dlg-title"></h2><form method="dialog"><button class="tb wide" aria-label="Close">Close</button></form></div>
+  <div class="d-body" id="d-season" hidden>
+    <div class="card" id="s-climate" hidden><h3>Climate state</h3><div id="s-climate-body"></div></div>
+    <div class="card" id="s-normal" hidden><h3>This season compared with 1991–2020</h3><div id="s-normal-body"></div></div>
+    <div class="d-grid">
+      <div class="card"><h3>Accumulated cyclone energy by basin</h3><div id="s-ace"></div></div>
+      <div class="card"><h3>Storms by peak intensity</h3><div id="s-cat"></div></div>
+      <div class="card"><h3>Strongest storms</h3><ol id="s-top" class="toplist"></ol></div>
+    </div>
+  </div>
+  <div class="d-body" id="d-archive" hidden>
+    <div class="arch-bar">
+      <label>Year <select id="f-year"><option value="">All</option></select></label>
+      <label>Basin <select id="f-basin"><option value="">All</option></select></label>
+      <label>Sort <select id="f-sort"><option value="date">Most recent</option><option value="peak">Strongest</option><option value="ace">Highest ACE</option></select></label>
+    </div>
+    <div id="archive-list" class="gallery"></div>
+  </div>
+  <div class="d-body" id="d-guide" hidden>
+    <div class="guide-frame" id="guide-frame"><img id="guide-img" alt="A frame from one of the storm videos"></div>
+    <div class="card" id="guide-text"></div>
+    <h3>Keyboard</h3>
+    <p class="small">Space play or pause · ← → one hour · [ ] previous or next storm · 1–4 switch view · Ctrl K search</p>
+  </div>
+  <div class="d-body" id="d-method" hidden>
+    <div class="method">
+      <p>To model and estimate the spatial patterns of cyclone vulnerability and resulting damage, we integrate cyclone hazard dynamics,
+        exposure (population and economic wealth) and social vulnerability into a unified spatial framework.</p>
+      <h3>1. Data integration</h3>
+      <p>All variables are mapped onto a standardised two-dimensional grid of 0.1° cells with coordinates (x, y), cut out around each storm's track.</p>
+      <h3>2. Hazard H(x, y)</h3>
+      <p>The wind field follows the Holland (1980) profile, V(r) = V<sub>max</sub> · [ (R<sub>max</sub>/r)<sup>B</sup> · exp(1 − (R<sub>max</sub>/r)<sup>B</sup>) ]<sup>½</sup>,
+        driven hour by hour by the official track and intensity (NCEP TCVitals). The shape parameter B = ρ e V<sub>max</sub><sup>2</sup> / Δp (limited to 1–2.5) uses the
+        pressure deficit Δp between the environment and the centre; the radius of maximum wind R<sub>max</sub> comes from TCVitals (Willoughby et al. 2006 when missing).
+        0.55 × the storm's forward motion is added for the asymmetry. The footprint is the highest wind each cell experiences along the track.</p>
+      <h3>3. Exposure E(x, y)</h3>
+      <p>Population from GHSL GHS-POP 2025 (EU JRC), summed into each cell. Economic value = population × national GDP per capita (PPP, World Bank),
+        the population-weighted form of LitPop (Eberenz et al. 2020). In the risk index, E = min(1, log<sub>10</sub>(1 + people) / 4.5).</p>
+      <h3>4. Vulnerability V(x, y)</h3>
+      <p>A country-level index (0 = least, 1 = most vulnerable): the mean of scaled GDP per capita (PPP), under-5 mortality and lack of access to electricity
+        (World Bank). This first version is deliberately simple and coarse; a gridded deprivation index (GRDI, NASA SEDAC) can replace it.</p>
+      <h3>5. Rainfall hazard</h3>
+      <p>Rain comes from the GFS: the 0–6 hour accumulated precipitation of each 6-hourly run, so every 6-hour window is covered once. Only rain within 500 km of
+        the storm centre (at the middle of each window) is counted, so that monsoon or frontal rain elsewhere is not attributed to the storm. Two layers are shown: the
+        storm-total accumulation and the largest 24-hour total, in the India Meteorological Department classes (heavy ≥ 64.5 mm, very heavy ≥ 115.6 mm, extremely heavy
+        ≥ 204.5 mm per day). GFS rainfall is a model estimate: it smooths the heaviest bands and can misplace them, so satellite estimates such as GPM IMERG are the
+        natural next step.</p>
+      <h3>6. Storm surge (indicative)</h3>
+      <p>The surge index (0–100) marks low-lying coast where the sea is most likely to be pushed onshore. It multiplies the square of the strongest modelled wind
+        over the nearby sea (wind stress), a shelf factor that is largest where the sea within about 60 km is shallow, and a height factor for land below about 8 m
+        within 25 km of the sea. Elevation and depth come from NOAA ETOPO1 (1 arc-minute) via NOAA ERDDAP. It is a relative index, not a surge height in metres:
+        real surge also depends on the tide, the angle of approach, the coastline's shape and river mouths. Official surge forecasts come from national services.</p>
+      <h3>7. Damage and risk</h3>
+      <p>Mean damage ratio f(V) = v<sup>3</sup> / (1 + v<sup>3</sup>), v = max(V − 25.7, 0) / (74.7 − 25.7) with V in m/s (Emanuel 2011, CLIMADA default thresholds).
+        Risk index R(x, y) = 100 · max(H<sub>wind</sub>, H<sub>rain</sub>) · E · V, with the wind hazard H<sub>wind</sub> = min(1, max(0, (V<sub>wind</sub> − 17.5 m/s) / (65 − 17.5))),
+        rising from 0 at 34 kt to 1 at about 126 kt, and the rain hazard H<sub>rain</sub> = min(1, max(0, (R<sub>24</sub> − 64.5 mm) / (300 − 64.5))), rising from 0 at IMD's
+        heavy threshold to 1 at 300 mm in a day.
+        It is shown in five classes from very low (&lt; 1) to very high (&gt; 20) and is relative: no money damage is estimated. The damage ratio f is used for the
+        economic numbers only.</p>
+      <h3>Limitations</h3>
+      <ul>
+        <li>Wind and rain only. Storm surge, which causes most deaths in the Bay of Bengal, and river flooding are not modelled.</li>
+        <li>The damage curve is not calibrated for each region, so the index compares places and storms rather than predicting losses.</li>
+        <li>Vulnerability is national, so differences within a country are not captured.</li>
+        <li>Population is a 2025 estimate; official intensities have their own uncertainty.</li>
+      </ul>
+      <p class="small muted">For comparison, the Global Disaster Alert and Coordination System (GDACS) publishes exposed-population estimates for every storm.</p>
+    </div>
+  </div>
+  <div class="d-body" id="d-glossary" hidden>
+    <dl class="glossary">
+      <dt>Rapid intensification (RI)</dt><dd>An increase of at least 30 kt in the maximum sustained wind within 24 hours. Most of the strongest storms go through it, and it is hard to forecast.</dd>
+      <dt>Maximum sustained wind</dt><dd>The highest wind averaged over 1 minute (US agencies, JTWC), 3 minutes (IMD) or 10 minutes (most other agencies). The same storm therefore has different numbers in different bulletins; 10-minute winds are roughly 0.93 × 1-minute winds.</dd>
+      <dt>IMD classes</dt><dd>India Meteorological Department scale for the North Indian Ocean: Depression 17–27 kt, Deep Depression 28–33, Cyclonic Storm 34–47, Severe 48–63, Very Severe 64–89, Extremely Severe 90–119, Super Cyclonic Storm 120 kt or more (3-minute winds).</dd>
+      <dt>Saffir–Simpson categories</dt><dd>Category 1 is 64–82 kt, 2 is 83–95, 3 is 96–112, 4 is 113–136 and 5 is 137 kt or more (1-minute winds). Categories 3–5 are called major.</dd>
+      <dt>Invest</dt><dd>An area of disturbed weather that an agency is investigating (numbered 90–99). It receives a storm number when it becomes a tropical depression in that agency's analysis.</dd>
+      <dt>Vertical wind shear</dt><dd>The change of the horizontal wind with height, here between 850 and 200 hPa (deep layer) or 850 and 500 hPa. Shear tilts the vortex and brings dry air into the core; under about 10 m/s it rarely stops intensification.</dd>
+      <dt>Vortex tilt</dt><dd>The horizontal distance between the circulation centres at 850 and 500 hPa. A vertically aligned vortex (small tilt) is a common precursor of rapid intensification.</dd>
+      <dt>Radius of maximum wind (RMW)</dt><dd>The distance from the centre to the strongest winds. It usually contracts as a storm intensifies.</dd>
+      <dt>Accumulated cyclone energy (ACE)</dt><dd>The sum of the squared maximum winds (kt) every 6 hours while a storm is at least tropical-storm strength, divided by 10,000. It combines how strong, how long-lived and how many storms there were.</dd>
+      <dt>Ensemble forecast</dt><dd>The same model run many times from slightly different starting states. The spread of the tracks shows how uncertain the forecast is; the ensemble mean is often more accurate than a single run.</dd>
+      <dt>ENSO, IOD, MJO</dt><dd>El Niño–Southern Oscillation (Pacific), Indian Ocean Dipole and Madden–Julian Oscillation: large-scale patterns that shift where and how often tropical cyclones form.</dd>
+      <dt>Storm surge</dt><dd>The rise of sea level pushed onshore by the storm's winds and low pressure. In the Bay of Bengal it causes most cyclone deaths.</dd>
+    </dl>
+  </div>
+  <div class="d-body" id="d-about" hidden>
+    <p class="about-name" id="about-name"></p>
+    <p class="about-role" id="about-role"></p>
+    <p id="about-summary"></p>
+    <p class="links" id="about-links"></p>
+    <div class="d-grid">
+      <div><h3>Research interests</h3><ul id="about-interests"></ul></div>
+      <div><h3>What this site demonstrates</h3><ul id="about-skills"></ul></div>
+      <div><h3>Memberships</h3><ul id="about-members"></ul></div>
+    </div>
+    <p class="small muted" id="site-stats"></p>
+    <p class="small muted">Data: NCEP GFS 0.25° analyses and NCEP TCVitals (operational positions and intensities from NHC, CPHC, JTWC and other centres). Forecast tracks: NCEP GEFS and GFS cyclone tracker. History: IBTrACS v04r01 (NOAA NCEI). Climate indices: NOAA CPC, NOAA PSL, Australian Bureau of Meteorology. Population: GHSL GHS-POP 2025 (EU JRC). Economic and vulnerability indicators: World Bank. Earth imagery: NASA Blue Marble and Black Marble. Coastlines: Natural Earth. Rendering: three.js and d3. Research visualisation, not an official forecast.</p>
+    <p class="small muted" id="generated"></p>
+    <p class="small"><a href="feed.xml">RSS feed of active storms</a>: follow daily updates in any feed reader, no account needed.</p>
+  </div>
+</dialog>
+
+<noscript><p class="banner">This site needs JavaScript.</p></noscript>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="config.js?v=__BUILD__"></script>
+<script>window.CESIUM_BASE_URL = "https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/";</script>
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js" onerror="window.Cesium=undefined"></script>
+<script src="earth_cesium.js?v=__BUILD__"></script>
+<script src="earth.js?v=__BUILD__"></script>
+<script src="app.js?v=__BUILD__"></script>
+
+<script src="i18n.js?v=__BUILD__"></script>
+<script src="wxmap.js?v=__BUILD__"></script>
+<script src="wx3d.js?v=__BUILD__"></script>
+<script src="shell.js?v=__BUILD__"></script>
+</body>
+</html>
