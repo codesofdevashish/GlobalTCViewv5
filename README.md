@@ -17,7 +17,7 @@ Every tropical cyclone on Earth, explained for the people who live with them and
 
 # Tropical cyclones in 3D, updated daily
 
-A GitHub Pages site that shows a 3D flow animation for every active tropical cyclone on Earth,
+A GitHub Pages site (https://codesofdevashish.github.io/GlobalTCViewv5/#today) that shows a 3D flow animation for every active tropical cyclone on Earth,
 rebuilt every morning by GitHub Actions. It also serves as a portfolio page (edit `site/config.js`).
 
 **What happens each day** (`.github/workflows/update.yml`, 06:40 UTC)
