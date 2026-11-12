@@ -21,8 +21,8 @@
     const st = { level: 850, mode: "single", scalar: "speed", wind: true, contours: true, storms: true, running: true, storms_: [] };
 
     // ---- Earth, atmosphere rim, colour layer
-    const earthMat = new T.MeshBasicMaterial({ color: 0x8c9aa4 });
-    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.encoding = T.sRGBEncoding || t.encoding; earthMat.map = t; earthMat.needsUpdate = true; });
+    const earthMat = new T.MeshBasicMaterial({ color: 0xd2dade });
+    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthMat.map = t; earthMat.needsUpdate = true; });
     const earth = new T.Mesh(new T.SphereGeometry(1, 128, 96), earthMat); earth.rotation.y = -Math.PI / 2; globe.add(earth);
     scene.add(new T.Mesh(new T.SphereGeometry(1.06, 64, 48), new T.ShaderMaterial({ side: T.BackSide, transparent: true, depthWrite: false, blending: T.AdditiveBlending,
       vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
