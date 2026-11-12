@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Singh
     given-names: Devashish Prakash
-    affiliation: "MEGHA Lab, Department of Climate Change, Indian Institute of Technology Hyderabad"
+    affiliation: "Department of Climate Change, Indian Institute of Technology Hyderabad"
 license: MIT
 repository-code: "https://github.com/codesofdevashish/GlobalTCViewv5"
 url: "https://codesofdevashish.github.io/GlobalTCViewv5/"
