@@ -123,6 +123,7 @@
     ["map", ".level", "Height", "Move up through the atmosphere, from the surface to about 12 km."],
     ["analysis", ".stage-tabs", "Storm analysis", "For each storm: 3D flow, track map, comparison and impact, all on one shared timeline."],
     ["learn", "#l-game", "Learn by playing", "Try the ingredients game: can you make a cyclone form?"],
+    ["about", "#about-h", "About", "Where the data come from, how the estimates are made, and how to cite the site."],
     ["today", "#guide-fab", "Ask the guide", "Ask me anything, any time. That's the tour!"],
   ];
   let step = 0;
@@ -158,6 +159,8 @@
              ["Which region's sea temperature defines El Niño?", ["The Bay of Bengal", "Niño 3.4 in the equatorial Pacific", "The North Atlantic"], 1, "Niño 3.4 is 5°S–5°N, 170°W–120°W."]],
     tc: [["About how warm must the sea be for a tropical cyclone?", ["About 15 °C", "About 26.5 °C", "About 35 °C"], 1, "Below about 26.5 °C the sea does not give enough heat and moisture."],
          ["Why do cyclones almost never form on the equator?", ["The sea is too cold", "The Earth's spin cannot start the swirl there", "There is no wind"], 1, "The Coriolis effect, which turns the winds into a spin, is zero at the equator."]],
+    surge: [["Why is storm surge worst at the head of the Bay of Bengal?", ["The water there is warmest", "The shelf is wide and shallow, so wind-driven water piles up", "Cyclones there are always the strongest"], 1, "Over a shallow shelf the water pushed by the wind has nowhere to go but up and inland."],
+             ["Which storm usually brings the most rain to one place?", ["A fast-moving strong storm", "A slow-moving storm, even a weak one", "A storm far out at sea"], 1, "Rain adds up with time: a storm that lingers keeps its rainbands over the same place."]],
   };
   for (const box of $$(".quiz[data-quiz]")) {
     const qs = QUIZ[box.dataset.quiz]; if (!qs) continue; box.hidden = false;

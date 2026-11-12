@@ -241,3 +241,21 @@ body[data-view="map"] .guide-fab { bottom: 1.1rem; right: auto; left: 1.1rem; }
 .today-grid .rows .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name wind" "where where" "act act"; row-gap: .5rem; }
 .today-grid .rows .row .r-name { grid-area: name; } .today-grid .rows .row .r-wind { grid-area: wind; text-align: right; }
 .today-grid .rows .row .r-where { grid-area: where; } .today-grid .rows .row .r-act { grid-area: act; justify-content: flex-start; }
+
+/* =================================================================== Learn links, contents, surge diagram; About */
+.see-map { display: inline-block; margin: .6rem 1rem 0 0; font-weight: 600; color: var(--accent); text-decoration: none; border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.see-map:hover { border-bottom-color: var(--accent); }
+.l-toc { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0 1.4rem; } .l-toc a { font-size: .88rem; padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; background: var(--panel); }
+.l-toc a:hover { border-color: var(--accent); color: var(--accent); }
+.ldiag { width: 100%; height: auto; max-width: 760px; display: block; margin: .8rem 0; color: var(--ink); }
+.ldiag .dl-h { font: 600 13px var(--body); fill: var(--ink); } .ldiag .dl-t { font: 500 12px var(--body); fill: var(--ink-2); }
+.ldiag .dl-sea { fill: color-mix(in srgb, #2f8fc4 45%, transparent); } .ldiag .dl-ground { fill: color-mix(in srgb, #8a7a5a 55%, transparent); }
+.ldiag .dl-land { fill: none; stroke: #6b8f4a; stroke-width: 4; stroke-linejoin: round; }
+.today-about { margin: 2rem 0 0; padding: .8rem 1rem; border-left: 4px solid var(--accent); background: var(--panel); border-radius: 0 10px 10px 0; }
+.today-about a { color: var(--accent); font-weight: 600; }
+.about { max-width: 1100px; } .about h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); margin: 0 0 .4rem; }
+.about-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.2rem; }
+.about-grid > section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.2rem; } .about-grid h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.about-list { margin: 0; padding-left: 1.1rem; } .about-list li { margin: .3rem 0; } #ab-author a { color: var(--accent); margin-right: .6rem; }
+.layers #copy-view { width: 100%; margin: 0 0 .7rem; }
+@media (max-width: 800px) { .about-grid { grid-template-columns: 1fr; } }

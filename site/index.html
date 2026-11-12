@@ -6,7 +6,21 @@
 <title>GlobalTCView: tropical cyclones today, and the winds around them</title>
 <meta name="description" content="Is a tropical cyclone heading your way? Live storms, plain-language warnings context, a live map of winds, pressure, moisture and sea temperature, and how the atmosphere works.">
 <meta property="og:title" content="GlobalTCView: tropical cyclones today">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌀</text></svg>">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0b2a3c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GlobalTCView">
+<meta property="og:description" content="Every tropical cyclone on Earth, today: live winds, oceans, forecasts and impacts, with plain-language guidance and interactive explanations.">
+<meta property="og:image" content="__SITE_URL__og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GlobalTCView: a globe with tropical cyclone winds">
+<meta property="og:url" content="__SITE_URL__">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GlobalTCView: tropical cyclones today">
+<meta name="twitter:description" content="Live winds, oceans, forecasts and impacts for every tropical cyclone on Earth.">
+<meta name="twitter:image" content="__SITE_URL__og-image.png">
 <link rel="alternate" type="application/rss+xml" title="Active tropical cyclones" href="feed.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,6 +44,7 @@
     <a href="#map" data-view="map" data-i18n="nav.map">Live map</a>
     <a href="#storms" data-view="analysis" data-i18n="nav.analysis">Storm analysis</a>
     <a href="#learn" data-view="learn" data-i18n="nav.learn">Learn</a>
+    <a href="#about" data-view="about" data-i18n="nav.about">About</a>
   </nav>
   <div class="search" role="search">
     <input id="q" type="search" placeholder="Find a storm, basin or year" data-i18n-ph="search.ph" aria-label="Find a storm" autocomplete="off">
@@ -106,14 +121,34 @@
     </div>
   </section>
 
-  <section class="about-site" aria-labelledby="ab-h">
-    <h2 id="ab-h" data-i18n="ab.h">What this site is</h2>
-    <p data-i18n-html="ab.p1">A research project that follows every tropical cyclone on Earth, rebuilt from NOAA's GFS weather model and official storm advisories several times a day.
-      The <a href="#map">live map</a> shows the winds, pressure, moisture and sea temperature that steer and feed storms. <a href="#storms">Storm analysis</a> has 3D
-      views of each storm's flow, its environment and an impact estimate. <a href="#learn">Learn</a> explains how it all works.</p>
-    <p class="muted" data-i18n="ab.p2">It is not an official warning service. For warnings, use your national meteorological service.</p>
-  </section>
+  <p class="today-about"><span data-i18n="ab.short">A research project, not an official warning service.</span> <a href="#about" data-i18n="ab.more">About this site, its data and methods →</a></p>
   <footer class="site-ftr"><p><span data-i18n="ftr">GlobalTCView by Devashish, IIT Hyderabad. Data: NOAA GFS and NCEP TCVitals, NASA, IBTrACS, GHSL, World Bank. Open source.</span> <a href="feed.xml">RSS feed</a></p></footer>
+</section>
+
+<!-- ======================= ABOUT -->
+<section id="view-about" class="view about" hidden aria-labelledby="about-h">
+  <h1 id="about-h">About GlobalTCView</h1>
+  <p class="lede">An open research and teaching tool that follows every tropical cyclone on Earth, rebuilt several times a day from free, public data.</p>
+  <div class="about-grid">
+    <section><h2>What it does</h2>
+      <p>For each active storm it renders the 3D flow from NOAA GFS analyses, tracks it against official advisories, shows the GEFS ensemble forecast and how well past forecasts verified, places it in the climate record (IBTrACS since 1980), and estimates who is exposed to damaging wind, extreme rain and storm surge. The live map shows the atmosphere and ocean that steer and feed storms, from two days ago to five days ahead.</p>
+      <p><strong>It is not an official warning service.</strong> For warnings, always follow your national meteorological service.</p></section>
+    <section><h2>Data</h2>
+      <ul class="about-list">
+        <li>Weather: NOAA NCEP GFS 0.25° and 1° analyses and forecasts; GEFS ensemble tracks.</li>
+        <li>Storms: NCEP TCVitals (positions and intensities from NHC, CPHC, JTWC, IMD and other centres); history from IBTrACS v04r01 (NOAA NCEI).</li>
+        <li>Ocean: NOAA GFS-Wave (WaveWatch III) wave height and direction; NOAA RTOFS surface currents via NOAA CoastWatch ERDDAP.</li>
+        <li>Exposure: GHSL GHS-POP 2025 (EU JRC); World Bank indicators; NOAA ETOPO1 elevation and depth.</li>
+        <li>Climate indices: NOAA CPC (ONI), NOAA PSL (DMI), Australian Bureau of Meteorology (MJO).</li>
+        <li>Maps: NASA Blue Marble and GIBS imagery; Natural Earth coastlines and places (public domain).</li>
+      </ul></section>
+    <section><h2>Methods and limits</h2>
+      <p>Every estimate is documented in Storm analysis (Impact method, Reading the 3D view). In short: winds from a Holland parametric profile, rain from GFS, a static surge-susceptibility index, and an experimental logistic model for rapid intensification trained on IBTrACS. Model winds at these resolutions are too weak for intense storms; exposure uses population, not buildings; nothing here models flood inundation.</p>
+      <p><button type="button" class="btn ghost" id="ab-method" data-open="method">Read the impact method</button></p></section>
+    <section><h2>Cite and reuse</h2>
+      <p>The code is open source under the MIT licence; the data keep their providers' licences. Please cite the software using the citation file in the repository (CITATION.cff).</p>
+      <p id="ab-author"></p></section>
+  </div>
 </section>
 
 <!-- ======================= LIVE MAP ======================= -->
@@ -126,6 +161,7 @@
       <button type="button" class="seg" data-mode="2d" aria-pressed="false" data-i18n="v.2d">Flat map</button>
     </div>
     <label class="tgl" id="stack-row"><input type="checkbox" id="ly-stack"> <span data-i18n="v.stack">All heights at once (3D vortex)</span></label>
+    <button type="button" class="tb wide" id="copy-view" data-i18n="ly.copy">Copy a link to this view</button>
     <h2 id="ly-h" data-i18n="ly.h">Layers</h2>
     <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
     <label class="tgl"><input type="checkbox" id="ly-cont" checked> <span id="ly-cont-label">Pressure: isobars, highs and lows</span></label>
@@ -343,7 +379,8 @@
 <section id="view-learn" class="view learn" aria-labelledby="learn-h">
   <article class="essay">
     <h1 id="learn-h" data-i18n="learn.h">How the atmosphere makes and moves tropical cyclones</h1>
-    <p class="lede" data-i18n="learn.lede">Five short explanations, each linked to what you can see on the live map today.</p>
+    <p class="lede" data-i18n="learn.lede">Six short explanations, each linked to today's live map, plus an interactive lab where you can build a cyclone from its ingredients.</p>
+    <nav class="l-toc" aria-label="On this page"><a href="#l-cells">Circulation cells</a><a href="#l-walker">Walker and El Niño</a><a href="#l-tc">What a cyclone needs</a><a href="#l-game">Cyclone lab</a><a href="#l-surge">Surge and extreme rain</a><a href="#l-scale">How strong is it?</a><a href="#l-read">Reading the map</a></nav>
 
     <section id="l-cells" aria-labelledby="l1">
       <h2 id="l1" data-i18n="learn.h1">The three circulation cells</h2>
@@ -355,6 +392,7 @@
         by the other two; at the surface it gives the westerlies. The <strong>polar cell</strong> sinks cold air over the poles.</p>
       <p>Most tropical cyclones form on the equator side of the subtropical highs, in the moist air of the Hadley cell, and are steered by the winds around those highs.</p>
       <button type="button" class="btn" data-goto="cells">Show the cells on the live map</button>
+      <a class="see-map" href="#map?view=2d&ov=cells&level=1000&layer=pwat">See the cells and trade winds on the live map →</a>
       <div class="quiz" data-quiz="cells"></div>
     </section>
 
@@ -371,6 +409,7 @@
       <p id="l-enso-now" class="now-note" hidden></p>
       <button type="button" class="btn" data-goto="walker">Show the Walker circulation</button>
       <button type="button" class="btn ghost" data-goto="nino">Show the Niño 3.4 and dipole regions</button>
+      <a class="see-map" href="#map?view=2d&ov=walker,nino&level=1000&layer=sst&lon=-150&lat=0&z=1.3">See the Walker loop over today's Pacific →</a>
       <div class="quiz" data-quiz="walker"></div>
     </section>
 
@@ -386,6 +425,7 @@
       <p>When these come together, warm moist air rises in thunderstorms, the pressure falls, the winds speed up and draw in more moist air. In the strongest storms
         an eye forms: a calm, clear centre surrounded by the eyewall, where the winds are fiercest.</p>
       <button type="button" class="btn" data-goto="sst">Show sea surface temperature</button>
+      <a class="see-map" href="#map?view=2d&layer=sst&level=1000&lon=85&lat=12&z=1.6">See today's warm sea around India →</a> <a class="see-map" href="#map?view=3d&layer=shear&level=850">See today's wind shear →</a>
       <div class="quiz" data-quiz="tc"></div>
     </section>
 
@@ -412,20 +452,40 @@
       </div>
     </section>
 
+    <section id="l-surge" aria-labelledby="l6">
+      <h2 id="l6">Storm surge and extreme rain: what kills in a cyclone</h2>
+      <p>Wind gets the headlines, but most cyclone deaths come from water. <strong>Storm surge</strong> is the sea pushed onshore by a storm. The wind drags on the sea surface, and over deep water the extra water can sink and spread out. Over a <strong>shallow continental shelf</strong> it has nowhere to go but up and inland, so the same wind raises the sea far more. Low pressure lifts the sea a little too (about 1 cm for every hectopascal). Surge is worst to the right of the track in the Northern Hemisphere, where the winds blow onshore, and when it arrives at high tide.</p>
+      <svg viewBox="0 0 640 230" class="ldiag" role="img" aria-label="Wind blowing towards the coast piles water up over a shallow shelf, much more than over a steep one">
+  <defs><marker id="sg-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 10,5 0,10z" fill="currentColor"/></marker></defs>
+  <text x="160" y="22" text-anchor="middle" class="dl-h">Shallow shelf (head of the Bay of Bengal)</text><text x="480" y="22" text-anchor="middle" class="dl-h">Steep shelf (much of the Andhra coast)</text>
+  <g><path d="M20 120 Q170 100 280 82 L300 80 L300 210 L20 210z" class="dl-sea"/><path d="M20 160 L280 150 L300 150 L300 210 L20 210z" class="dl-ground"/>
+    <path d="M280 82 L300 80 L300 76" fill="none" stroke="currentColor" stroke-width="2"/><path d="M272 150 L300 150 L300 112 L312 108" class="dl-land"/>
+    <text x="250" y="70" class="dl-t">water piles up</text>
+    <line x1="40" y1="50" x2="140" y2="50" stroke="currentColor" stroke-width="3" marker-end="url(#sg-a)"/><line x1="60" y1="64" x2="160" y2="64" stroke="currentColor" stroke-width="3" marker-end="url(#sg-a)"/><text x="40" y="40" class="dl-t">onshore wind</text></g>
+  <g transform="translate(320 0)"><path d="M20 112 L280 106 L300 106 L300 210 L20 210z" class="dl-sea"/><path d="M20 210 L220 205 Q260 180 280 150 L300 150 L300 210z" class="dl-ground"/>
+    <path d="M272 150 L300 150 L300 112 L312 108" class="dl-land"/><text x="230" y="96" class="dl-t">smaller rise</text>
+    <line x1="40" y1="50" x2="140" y2="50" stroke="currentColor" stroke-width="3" marker-end="url(#sg-a)"/><line x1="60" y1="64" x2="160" y2="64" stroke="currentColor" stroke-width="3" marker-end="url(#sg-a)"/></g>
+</svg>
+      <p>This is why the head of the Bay of Bengal, with its wide, shallow shelf and low delta, has seen the deadliest surges on Earth, and why the surge index in Storm analysis multiplies onshore wind, shelf shallowness and how low the land is. It ranks coast by susceptibility; it does not forecast water levels.</p>
+      <p><strong>Extreme rain</strong> depends less on a storm's strength than on how long it stays. Rainbands drop heavy rain wherever they pass, so a <strong>slow-moving</strong> or stalled storm, even a weak one, can drop a month's rain in a day or two, and moist air pushed up hills adds more. IMD calls 64.5 mm in a day heavy, 115.6 mm very heavy and 204.5 mm extremely heavy: these are the classes in the Impact view's rain maps.</p>
+      <a class="see-map" href="#map?view=2d&layer=rain&t=24&level=1000">See tomorrow's 6-hour rain on the live map →</a>
+      <div class="quiz" data-quiz="surge"></div>
+    </section>
+
     <section id="l-scale" aria-labelledby="l4">
       <div class="quiz" data-quiz="scale" hidden></div>
       <h2 id="l4" data-i18n="learn.h4">How strong is it?</h2>
       <p>Different agencies average the wind over different times, so their numbers differ slightly. In the North Indian Ocean, the India Meteorological Department uses these classes (3-minute winds):</p>
       <table class="scale">
         <tr><th>Class</th><th>Wind</th><th>What it can do</th></tr>
-        <tr><td>Depression, Deep Depression</td><td>31–61 km/h</td><td>Heavy rain, rough sea</td></tr>
-        <tr><td>Cyclonic Storm</td><td>62–88 km/h</td><td>Damage to huts and trees, very rough sea</td></tr>
-        <tr><td>Severe Cyclonic Storm</td><td>89–117 km/h</td><td>Damage to thatched roofs, power and communication lines</td></tr>
-        <tr><td>Very Severe Cyclonic Storm</td><td>118–166 km/h</td><td>Extensive damage to weak houses, roads and crops; storm surge</td></tr>
-        <tr><td>Extremely Severe Cyclonic Storm</td><td>167–221 km/h</td><td>Large-scale damage; high storm surge</td></tr>
-        <tr><td>Super Cyclonic Storm</td><td>222 km/h or more</td><td>Catastrophic damage and surge</td></tr>
+        <tr><td>Depression, Deep Depression</td><td>31–61 km/h (17–33 kt)</td><td>Heavy rain, rough sea</td></tr>
+        <tr><td>Cyclonic Storm</td><td>62–88 km/h (34–47 kt)</td><td>Damage to huts and trees, very rough sea</td></tr>
+        <tr><td>Severe Cyclonic Storm</td><td>89–117 km/h (48–63 kt)</td><td>Damage to thatched roofs, power and communication lines</td></tr>
+        <tr><td>Very Severe Cyclonic Storm</td><td>118–166 km/h (64–89 kt)</td><td>Extensive damage to weak houses, roads and crops; storm surge</td></tr>
+        <tr><td>Extremely Severe Cyclonic Storm</td><td>167–221 km/h (90–119 kt)</td><td>Large-scale damage; high storm surge</td></tr>
+        <tr><td>Super Cyclonic Storm</td><td>222 km/h or more (120 kt or more)</td><td>Catastrophic damage and surge</td></tr>
       </table>
-      <p class="muted small">Elsewhere the Saffir–Simpson scale (1-minute winds) is used: category 1 from 119 km/h to category 5 at 252 km/h or more.</p>
+      <p class="muted small">Elsewhere the Saffir–Simpson scale (1-minute winds) is used: category 1 from 119 km/h (64 kt) to category 5 at 252 km/h (137 kt) or more. One knot is 1.852 km/h.</p>
     </section>
 
     <section id="l-read" aria-labelledby="l5">
@@ -502,7 +562,7 @@
         economic numbers only.</p>
       <h3>Limitations</h3>
       <ul>
-        <li>Wind and rain only. Storm surge, which causes most deaths in the Bay of Bengal, and river flooding are not modelled.</li>
+        <li>Wind, rain and a static storm-surge susceptibility index only. Dynamic surge inundation (with tides and wave setup) and river flooding are not modelled: the surge index ranks low-lying coast by exposure to onshore wind over a shallow shelf, but gives no water levels or flood extents.</li>
         <li>The damage curve is not calibrated for each region, so the index compares places and storms rather than predicting losses.</li>
         <li>Vulnerability is national, so differences within a country are not captured.</li>
         <li>Population is a 2025 estimate; official intensities have their own uncertainty.</li>

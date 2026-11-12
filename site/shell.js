@@ -280,7 +280,7 @@
     if (!wx || busy) return; busy = true; $("#tm").value = i; timeLabel();
     try { await wx.setTime(i); if (wx3) await wx3.refresh(); legend(); } finally { busy = false; }
   }
-  $("#tm").addEventListener("input", () => goTime(+$("#tm").value));
+  $("#tm").addEventListener("input", () => { goTime(+$("#tm").value); writeMapState(); });
   let playing = null;
   $("#tm-play").addEventListener("click", () => {
     const b = $("#tm-play");
@@ -292,6 +292,7 @@
     $("#lv-out").textContent = p === 1000 ? t("lv.surface") : t("lv.fmt", { p, info: t(`lv.${p}`) });
     $("#ly-cont-label").textContent = t(p === 1000 ? "cont.p" : "cont.h");
   }
+  $("#lv").addEventListener("input", () => writeMapState());
   $("#lv").addEventListener("input", async () => {
     if (!wx) return; levelLabel(); $("#wx-info").hidden = true; const p = wx.levels()[+$("#lv").value];
     await wx.set("level", p); if (wx3) await wx3.set("level", p); legend();
@@ -399,22 +400,82 @@
   }
 
   // ---------------------------------------------------------------- navigation
-  const VIEWS = { today: "today", map: "map", storms: "analysis", learn: "learn" };
-  function show(v) {
+  const VIEWS = { today: "today", map: "map", storms: "analysis", learn: "learn", about: "about" };
+  const TITLES = { today: "GlobalTCView: tropical cyclones today", map: "Live map of winds and oceans · GlobalTCView", analysis: "Storm analysis · GlobalTCView",
+                   learn: "Learn how cyclones work · GlobalTCView", about: "About · GlobalTCView" };
+  function show(v, opts) {
     document.body.dataset.view = v; if (wxMini) wxMini.pause(v !== "today");
     for (const s of $$(".view")) s.hidden = s.id !== `view-${v}`;
     for (const a of $$(".views a")) a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false");
     if (v === "map") { initMap().then(() => setMode(MODE)); } else { if (wx) wx.pause(true); if (wx3) wx3.pause(true); }
     if (v === "analysis") requestAnimationFrame(() => { window.dispatchEvent(new Event("resize")); if (window.TCDash) window.TCDash.refresh(); });
+    document.title = TITLES[v] || TITLES.today;
     const want = v === "analysis" ? null : `#${Object.keys(VIEWS).find((k) => VIEWS[k] === v)}`;
-    if (want && location.hash !== want) history.replaceState(null, "", want);
-    window.scrollTo(0, 0);
+    const keep = v === "map" && location.hash.startsWith("#map?");            // keep map settings in the address
+    if (want && !keep && location.hash !== want) history.replaceState(null, "", want);
+    if (!opts || !opts.keepScroll) window.scrollTo(0, 0);
   }
   function route() {
-    const h = location.hash.slice(1);
+    const h = decodeURIComponent(location.hash.slice(1)), [path, qs] = h.split("?");
     if (/(^|&)storm=/.test(h)) { show("analysis"); return; }
-    show(VIEWS[h] || "today");
+    if (VIEWS[path]) { show(VIEWS[path]); if (path === "map" && qs) applyMapState(new URLSearchParams(qs)); return; }
+    const target = path && document.getElementById(path), host = target && target.closest(".view");   // an in-page anchor such as #place-h or #l-surge
+    if (host) { show(host.id.replace("view-", ""), { keepScroll: true }); history.replaceState(null, "", `#${Object.keys(VIEWS).find((k) => VIEWS[k] === host.id.replace("view-", "")) || "today"}`);
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "start" })); return; }
+    show("today");
   }
+  // in-page links (table of contents, hero buttons) scroll without changing the route
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="#"]'); if (!a) return; const id = a.getAttribute("href").slice(1);
+    if (!id || VIEWS[id.split("?")[0]] || /(^|&)storm=/.test(id)) return;
+    const target = document.getElementById(id); if (!target) return;
+    e.preventDefault(); const host = target.closest(".view"); if (host && host.hidden) show(host.id.replace("view-", ""), { keepScroll: true });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  // ---------------------------------------------------------------- map settings in the address: #map?view=2d&layer=sst&level=850&ov=cells&flow=wind&t=24&lon=85&lat=12&z=1.6
+  let applying = false;
+  async function applyMapState(q) {
+    await initMap(); if (!wx) return; applying = true;
+    try {
+      if (q.get("view")) setMode(q.get("view") === "3d" ? "3d" : "2d");
+      const lv = +q.get("level"); if (lv) { const i = wx.levels().indexOf(lv); if (i >= 0) { $("#lv").value = i; $("#lv").dispatchEvent(new Event("input")); } }
+      const tq = q.get("t"); if (tq != null && wx.meta() && wx.meta().times) { const i = wx.meta().times.findIndex((x) => x.offset_h === +tq); if (i >= 0) await goTime(i); }
+      for (const [name, key] of [["scalar", "layer"], ["flow", "flow"]]) { const v = q.get(key); const r = v && $(`input[name="${name}"][value="${v}"]`); if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event("change")); } }
+      for (const ov of (q.get("ov") || "").split(",").filter(Boolean)) { const c = $(`.chip[data-ov="${ov}"]`); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); }
+      if (q.get("lon") && q.get("lat")) both((m) => m.focus(+q.get("lon"), +q.get("lat"), +q.get("z") || 1.6));
+      if (q.get("stack") === "1" && wx3) { $("#ly-stack").checked = true; $("#ly-stack").dispatchEvent(new Event("change")); }
+    } finally { applying = false; writeMapState(); }
+  }
+  function mapStateQuery() {
+    if (!wx) return ""; const q = new URLSearchParams(); q.set("view", MODE);
+    const sc = $('input[name="scalar"]:checked'), fl = $('input[name="flow"]:checked'); if (sc) q.set("layer", sc.value); if (fl && fl.value !== "wind") q.set("flow", fl.value);
+    const p = wx.levels()[+$("#lv").value]; if (p) q.set("level", p);
+    const m = wx.meta(); if (m && m.times && m.times[+$("#tm").value]) q.set("t", m.times[+$("#tm").value].offset_h);
+    const ov = $$('.chip[data-ov][aria-pressed="true"]').map((c) => c.dataset.ov); if (ov.length) q.set("ov", ov.join(","));
+    if (MODE === "2d" && wx.getView) { const g = wx.getView(); q.set("lon", g.lon); q.set("lat", g.lat); q.set("z", g.k); }
+    if (wx3 && MODE === "3d" && $("#ly-stack").checked) q.set("stack", "1");
+    return q.toString();
+  }
+  let wTimer = null;
+  function writeMapState() {
+    if (applying || document.body.dataset.view !== "map") return;
+    clearTimeout(wTimer); wTimer = setTimeout(() => { const q = mapStateQuery(); if (q) history.replaceState(null, "", `#map?${q}`); }, 250);
+  }
+  document.addEventListener("change", (e) => { if (e.target.closest && e.target.closest(".mapview")) writeMapState(); });
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest(".mapview .chip, .mapview .seg")) setTimeout(writeMapState, 50); });
+  document.addEventListener("pointerup", (e) => { if (e.target.closest && e.target.closest("#wx")) writeMapState(); });
+  document.addEventListener("wheel", (e) => { if (e.target.closest && e.target.closest("#wx")) writeMapState(); }, { passive: true });
+  $("#copy-view").addEventListener("click", async () => {
+    writeMapState(); await new Promise((r) => setTimeout(r, 300)); const b = $("#copy-view"), old = b.textContent;
+    try { await navigator.clipboard.writeText(location.href); b.textContent = t("ly.copied", {}, "Link copied"); } catch (e) { b.textContent = location.href; }
+    setTimeout(() => { b.textContent = old; }, 1800);
+  });
+  // About: author details from config.js
+  (() => { const S_ = window.SITE || {}, box = $("#ab-author"); if (!box) return;
+    box.append(`Made by ${S_.name || "the author"}${S_.affiliation ? `, ${S_.affiliation}` : ""}. `);
+    for (const [k, label] of [["github", "GitHub"], ["scholar", "Google Scholar"], ["linkedin", "LinkedIn"], ["email", "Email"]]) {
+      const v = S_.links && S_.links[k]; if (v) box.append(el("a", { href: k === "email" ? `mailto:${v}` : v, target: "_blank", rel: "noopener", text: label }), " ");
+    } })();
   function openStorm(key) { show("analysis"); const go = () => { if (window.TCDash && window.TCDash.open(key)) return; setTimeout(go, 200); }; go(); }
   window.addEventListener("hashchange", route);
   $$(".views a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); show(a.dataset.view); }));

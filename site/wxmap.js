@@ -73,16 +73,19 @@
       return out;
     }
     st.cache = {}; st.t = 0;
+    let LANDMASK = null;                                    // 1-degree Natural Earth land mask: keeps sea-only fields off the land
+    const landMask = () => LANDMASK || (LANDMASK = fetch("vendor/landmask-1deg.bin").then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? new Uint8Array(b) : null)).catch(() => null));
+    async function maskSea(S) { const m = await landMask(); if (!m) return; for (const k of ["sst", "hs", "wu", "wv", "cu", "cv"]) { const a = S[k]; if (a) for (let i = 0; i < a.length; i++) if (m[i]) a[i] = NaN; } }
     async function loadTime(i) {
       const M = st.meta; if (!st.cache[i]) st.cache[i] = { surf: null, lev: {} };
       const C = st.cache[i];
-      if (!C.surf) { const s = unpack(await getBin(`${st.base}t${i}_sfc.bin`), M.sfc, M.ranges); C.surf = Object.assign(s, { u: s.u10, v: s.v10 }); }
+      if (!C.surf) { const s = unpack(await getBin(`${st.base}t${i}_sfc.bin`), M.sfc, M.ranges); await maskSea(s); C.surf = Object.assign(s, { u: s.u10, v: s.v10 }); }
       st.surf = C.surf; st.lev = C.lev;
     }
     async function load(baseUrl = "data/wx/") {
       st.meta = await getJSON(baseUrl + "meta.json"); st.base = baseUrl;
       if (st.meta.format === "bin-v2") { st.t = st.meta.now || 0; await loadTime(st.t); }
-      else { const s = await getJSON(baseUrl + "surface.json"); st.surf = {}; for (const [k, e] of Object.entries(s)) st.surf[k] = decode(e); }
+      else { const s = await getJSON(baseUrl + "surface.json"); st.surf = {}; for (const [k, e] of Object.entries(s)) st.surf[k] = decode(e); await maskSea(st.surf); }
       await setLevel(st.meta.levels.includes(850) ? 850 : st.meta.levels[0]);
       return st.meta;
     }
@@ -482,7 +485,7 @@
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
       focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },
