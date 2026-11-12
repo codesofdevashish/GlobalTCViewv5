@@ -60,6 +60,8 @@
 <!-- ======================= TODAY ======================= -->
 <section id="view-today" class="view today" aria-labelledby="t-headline">
   <div class="hero">
+    <img class="hero-bg" id="t-sat" src="hero-cyclone.jpg" alt="" decoding="async">
+    <p class="hero-credit" id="t-sat-cap">Illustration of a tropical cyclone seen from space</p>
     <div class="hero-text">
       <p class="hero-kicker"><span class="live-dot" aria-hidden="true"></span><span id="t-updated"></span></p>
       <h1 id="t-headline">Checking today's tropical cyclones…</h1>
@@ -71,13 +73,11 @@
       </div>
       <ul class="glance" id="t-glance" aria-label="At a glance"></ul>
     </div>
-    <figure class="hero-globe">
-      <div id="t-globe" class="t-globe" role="img" aria-label="Live winds near the surface and today's storms"></div>
-      <figcaption data-i18n="hero.cap">Live winds near the surface. Drag to turn, select to open the live map.</figcaption>
-    </figure>
+
   </div>
 
   <div class="today-grid">
+    <div class="today-col">
     <section class="place" aria-labelledby="place-h">
       <h2 id="place-h" data-i18n="place.h">Is a cyclone heading for you?</h2>
       <p class="muted" data-i18n="place.p">Choose your town, or let your browser find you. Your place is kept only on this device.</p>
@@ -89,6 +89,11 @@
       <div id="place-result" class="place-result" aria-live="polite"></div>
       <div id="towncast" class="towncast" hidden></div>
     </section>
+        <figure class="hero-globe card-globe">
+      <div id="t-globe" class="t-globe" role="img" aria-label="Live winds near the surface and today's storms"></div>
+      <figcaption><b data-i18n="hero.live">Live winds right now</b> <span data-i18n="hero.cap">Near the surface. Drag to turn, select to open the live map.</span></figcaption>
+    </figure>
+    </div>
     <section class="storms-today" aria-labelledby="st-h">
       <h2 id="st-h" data-i18n="st.h">Storms right now</h2>
       <ol id="t-storms" class="rows"></ol>
@@ -146,7 +151,9 @@
       <p>Every estimate is documented in Storm analysis (Impact method, Reading the 3D view). In short: winds from a Holland parametric profile, rain from GFS, a static surge-susceptibility index, and an experimental logistic model for rapid intensification trained on IBTrACS. Model winds at these resolutions are too weak for intense storms; exposure uses population, not buildings; nothing here models flood inundation.</p>
       <p><button type="button" class="btn ghost" id="ab-method" data-open="method">Read the impact method</button></p></section>
     <section><h2>Cite and reuse</h2>
-      <p>The code is open source under the MIT licence; the data keep their providers' licences. Please cite the software using the citation file in the repository (CITATION.cff).</p>
+      <p>The code is open source under the MIT licence; the data keep their providers' licences. Please cite it as:</p>
+      <p class="cite">Singh, D. P. (2026). <i>GlobalTCView</i>. Zenodo. <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.24157024</a></p>
+      <p><a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener"><img src="https://zenodo.org/badge/1449072755.svg" alt="DOI 10.5281/zenodo.24157024" height="20"></a></p>
       <p id="ab-author"></p></section>
   </div>
 </section>
