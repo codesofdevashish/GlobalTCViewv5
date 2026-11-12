@@ -18,11 +18,11 @@
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(32, 1, 0.05, 100);
     let dist = 3.0; camera.position.set(0, 0, dist);
     const globe = new T.Group(); globe.rotation.order = "XYZ"; scene.add(globe);
-    const st = { flow: "wind", level: 850, mode: "single", scalar: "speed", wind: true, contours: true, storms: true, running: true, storms_: [] };
+    const st = { level: 850, mode: "single", scalar: "speed", wind: true, contours: true, storms: true, running: true, storms_: [] };
 
     // ---- Earth, atmosphere rim, colour layer
-    const earthMat = new T.MeshBasicMaterial({ color: 0xd2dade });
-    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthMat.map = t; earthMat.needsUpdate = true; });
+    const earthMat = new T.MeshBasicMaterial({ color: 0x8c9aa4 });
+    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.encoding = T.sRGBEncoding || t.encoding; earthMat.map = t; earthMat.needsUpdate = true; });
     const earth = new T.Mesh(new T.SphereGeometry(1, 128, 96), earthMat); earth.rotation.y = -Math.PI / 2; globe.add(earth);
     scene.add(new T.Mesh(new T.SphereGeometry(1.06, 64, 48), new T.ShaderMaterial({ side: T.BackSide, transparent: true, depthWrite: false, blending: T.AdditiveBlending,
       vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
@@ -75,17 +75,13 @@
     const fc = FLOW.lut.map(([r, g, b]) => [r / 255, g / 255, b / 255]);
     function stepSystems() {
       const lev = src.data().lev;
-      const SF = src.data().surf || {}, sea = st.flow !== "wind" && st.mode === "single";
       for (const S of systems) {
-        const l = sea ? { u: st.flow === "waves" ? SF.wu : SF.cu, v: st.flow === "waves" ? SF.wv : SF.cv } : lev[S.p]; if (!l || !l.u) continue;
-        const r = sea ? 1.004 : rFor(S.p), sp = 0.028, emph = st.mode === "stack" && S.p !== st.level ? 0.55 : 1;
+        const l = lev[S.p]; if (!l || !l.u) continue;
+        const r = rFor(S.p), sp = 0.028, emph = st.mode === "stack" && S.p !== st.level ? 0.55 : 1;
         for (let i = 0; i < S.n; i++) {
           const q = S.parts[i]; let u = src.sample(l.u, q.lon, q.lat), v = src.sample(l.v, q.lon, q.lat);
           if (!isFinite(u) || ++q.age > q.life) { S.parts[i] = spawn(S.p, false); continue; }
-          let shade = Math.hypot(u, v) * 3.6;
-          if (sea && st.flow === "waves") { shade = src.sample(SF.hs, q.lon, q.lat) / 12 * FLOW.hi; u *= 9; v *= 9; }
-          else if (sea) { shade = Math.hypot(u, v) / 2 * FLOW.hi; u *= 14; v *= 14; }
-          q.lon += u * sp / Math.max(0.2, Math.cos(q.lat * D)); q.lat = Math.max(-85, Math.min(85, q.lat + v * sp)); q.spd = shade;
+          q.lon += u * sp / Math.max(0.2, Math.cos(q.lat * D)); q.lat = Math.max(-85, Math.min(85, q.lat + v * sp)); q.spd = Math.hypot(u, v) * 3.6;
           q.tr.copyWithin(3, 0, (TL - 1) * 3); q.tr.set(ll2v(q.lat, q.lon, r), 0);
           const c = fc[Math.max(0, Math.min(255, Math.round(q.spd / FLOW.hi * 255)))], life = Math.min(1, q.age / 8, (q.life - q.age) / 8);
           for (let j = 0; j < TL - 1; j++) {
@@ -132,41 +128,6 @@
         stormObjs.push({ obj: spr, col, lab, s });
       }
     }
-
-    const GIBS4326 = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/wmts.cgi?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=BlueMarble_ShadedRelief_Bathymetry&STYLE=default&TILEMATRIXSET=500m&FORMAT=image%2Fjpeg";
-    let patch = null, patchKey = "";
-    function viewCentre() { const v = globe.worldToLocal(camera.position.clone()).normalize(); const lat = 90 - Math.acos(v.y) / D; let lon = 90 - Math.atan2(v.z, v.x) / D; lon = ((lon + 540) % 360) - 180; return [lat, lon]; }
-    function dropPatch() { if (patch) { globe.remove(patch); patch.geometry.dispose(); patch.material.map.dispose(); patch.material.dispose(); patch = null; patchKey = ""; } }
-    function updateDetail() {
-      const d = camera.position.z; if (d > 2.1 || drag) { if (d > 2.1) dropPatch(); return; }
-      const [lat, lon] = viewCentre(), h = el.clientHeight || 600, span = 2 * (d - 1) * Math.tan(camera.fov * D / 2) / D * 1.15;   // degrees of arc in view
-      let z = Math.max(1, Math.min(7, Math.ceil(Math.log2(0.5625 / (span / h))))), win = Math.min(120, span * 1.7), TS, c0, c1, r0, r1;
-      for (;;) {
-        TS = 288 / 2 ** z; const maxC = Math.ceil(360 / TS) - 1, maxR = Math.ceil(180 / TS) - 1;
-        c0 = Math.max(0, Math.floor((lon - win / 2 + 180) / TS)); c1 = Math.min(maxC, Math.floor((lon + win / 2 + 180) / TS));
-        r0 = Math.max(0, Math.floor((90 - Math.min(90, lat + win / 2)) / TS)); r1 = Math.min(maxR, Math.floor((90 - Math.max(-90, lat - win / 2)) / TS));
-        if ((c1 - c0 + 1) * (r1 - r0 + 1) <= 16 || z <= 1) break; z--;
-      }
-      const key = `${z}/${r0}-${r1}/${c0}-${c1}`; if (key === patchKey) return; dropPatch(); patchKey = key;
-      const nc = c1 - c0 + 1, nr = r1 - r0 + 1, cv = document.createElement("canvas"); cv.width = nc * 512; cv.height = nr * 512;
-      const cx = cv.getContext("2d"), tex = new T.CanvasTexture(cv); tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      const lonA = -180 + c0 * TS, lonB = -180 + (c1 + 1) * TS, latB = 90 - r0 * TS, latA = 90 - (r1 + 1) * TS;
-      const gL0 = Math.max(-180, lonA), gL1 = Math.min(180, lonB), gB0 = Math.max(-90, latA), gB1 = Math.min(90, latB), N = 48, pos = [], uv = [], idx = [];
-      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
-        const lo = gL0 + (gL1 - gL0) * i / N, la = gB1 - (gB1 - gB0) * j / N; pos.push(...ll2v(la, lo, 1.0006));
-        uv.push((lo - lonA) / (lonB - lonA), 1 - (latB - la) / (latB - latA));
-      }
-      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + 1, c = a + N + 1, e = c + 1; idx.push(a, c, b, b, c, e); }
-      const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
-      patch = new T.Mesh(g, new T.MeshBasicMaterial({ map: tex, color: earthMat.color, transparent: true, opacity: 0 })); globe.add(patch);
-      let loaded = 0; const mine = key;
-      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-        const img = new Image(); img.crossOrigin = "anonymous";
-        img.onload = () => { if (patchKey !== mine) return; cx.drawImage(img, (c - c0) * 512, (r - r0) * 512); tex.needsUpdate = true; if (++loaded >= 1) patch.material.opacity = 1; };
-        img.src = `${GIBS4326}&TILEMATRIX=${z}&TILEROW=${r}&TILECOL=${c}`;
-      }
-    }
-    setInterval(updateDetail, 800);
 
     // ---- crisp vector coastlines over the Earth image
     window.WxMap.landSet("50m").then((L) => {
