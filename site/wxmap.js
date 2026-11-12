@@ -14,6 +14,8 @@
     vort:  { unit: "×10⁻⁵ s⁻¹", lo: -20, hi: 20, f: (x) => x, stops: ["#2a5fa8", "#6fa8dc", "#e9eef2", "#f2a07a", "#c8372d"] },
     shear: { unit: "m/s", lo: 0, hi: 40, f: (x) => x, stops: ["#2e8b57", "#9bd36a", "#f2e14a", "#f29a3a", "#d9342b", "#8b1a4a"] },
     cape:  { unit: "J/kg", lo: 0, hi: 4000, f: (x) => x, stops: ["#24415c", "#4f7a8c", "#d9d24a", "#f29a3a", "#d9342b", "#8b2a8a"] },
+    hs:    { unit: "m", lo: 0, hi: 12, f: (x) => x, stops: ["#1d3b6e", "#2f6fc4", "#2fa3c4", "#7fd4a8", "#f2e14a", "#f29a3a", "#d9342b", "#7a1430"] },
+    curspd:{ unit: "m/s", lo: 0, hi: 2, f: (x) => x, stops: ["#102a43", "#1f5f8b", "#2fa3c4", "#9be26a", "#f4e04a", "#f2603a"] },
     rain:  { unit: "mm", lo: 0, hi: 60, f: (x) => x, stops: ["#bfe3f2", "#6fb8e0", "#2f6fc4", "#5b3fb0", "#b03aa8", "#ff5fc0"] },
   };
   const FLOW = { lo: 0, hi: 200, stops: ["#9fd4ff", "#62d2c6", "#9be26a", "#f4e04a", "#f7a43a", "#f2603a", "#e0398f", "#ff8be0"] };   // streamline colour, km/h
@@ -49,7 +51,7 @@
     el.append(base, flow);
     const bctx = base.getContext("2d"), fctx = flow.getContext("2d");
     const st = { level: 850, wind: true, scalar: "speed", contours: true, storms: true, cells: false, walker: false, nino: false,
-                 rot: [-80, -12], k: 1, meta: null, fc: null, towns: [], showTowns: false, sel: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
+                 rot: [-80, -12], k: 1, meta: null, flow: "wind", ocean: false, fc: null, towns: [], showTowns: false, sel: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
     let W = 0, H = 0, R = 0, dpr = 1;
     const proj = d3.geoOrthographic().clipAngle(90).precision(0.6);
     const path = d3.geoPath(proj, bctx);
@@ -115,6 +117,8 @@
     }
     function scalarFor(name) {
       const l = L(), S = st.surf || {};
+      if (name === "hs") return S.hs;
+      if (name === "curspd") { if (!S.cu) return null; if (!S.cspd) { S.cspd = new Float32Array(NX * NY); for (let i = 0; i < NX * NY; i++) S.cspd[i] = Math.hypot(S.cu[i], S.cv[i]); } return S.cspd; }
       if (name === "tmp") return l.tmp; if (name === "vort") return l.u ? vorticity(l) : null; if (name === "cape") return S.cape; if (name === "rain") return S.rain6;
       if (name === "shear") { const a = st.lev[850], b = st.lev[200]; if (!a || !b || !a.u || !b.u) return null;
         if (!S.shear) { S.shear = new Float32Array(NX * NY); for (let i = 0; i < NX * NY; i++) S.shear[i] = Math.hypot(b.u[i] - a.u[i], b.v[i] - a.v[i]); } return S.shear; }
@@ -126,7 +130,7 @@
       return R;
     }
     function scalarArray() {
-      if (["tmp", "vort", "cape", "rain", "shear"].includes(st.scalar)) return scalarFor(st.scalar);
+      if (["tmp", "vort", "cape", "rain", "shear", "hs", "curspd"].includes(st.scalar)) return scalarFor(st.scalar);
       if (st.scalar === "pwat") return st.surf && st.surf.pwat;
       if (st.scalar === "sst") return st.surf && st.surf.sst;
       if (st.scalar === "rh") return L().rh;
@@ -173,8 +177,20 @@
     function gridLines(a, thresholds) {                     // contour lines as MultiLineStrings in lon/lat
       const w = NX + 1, vals = new Float64Array(w * NY);
       for (let j = 0; j < NY; j++) for (let i = 0; i < w; i++) { const v = a[j * NX + (i % NX)]; vals[j * w + i] = isFinite(v) ? v : NaN; }
-      return d3.contours().size([w, NY]).thresholds(thresholds)(vals).map((c) => ({ value: c.value, type: "MultiLineString",
-        coordinates: c.coordinates.flat().map((ring) => ring.map(([x, y]) => [x - 0.5, 90 - (y - 0.5)])) }));
+      const edge = (x, y) => x <= 0 || x >= w || y <= 0 || y >= NY;
+      return d3.contours().size([w, NY]).thresholds(thresholds)(vals).map((c) => {
+        const lines = [];
+        for (const ring of c.coordinates.flat()) {
+          let cur = [];
+          for (let k = 0; k < ring.length; k++) {
+            const [x, y] = ring[k], prev = ring[k - 1];
+            if (prev && edge(prev[0], prev[1]) && edge(x, y)) { if (cur.length > 1) lines.push(cur); cur = []; }
+            cur.push([x - 0.5, 90 - (y - 0.5)]);
+          }
+          if (cur.length > 1) lines.push(cur);
+        }
+        return { value: c.value, type: "MultiLineString", coordinates: lines };
+      });
     }
     let contourCache = null;
     function contours() {
@@ -259,7 +275,33 @@
         if (++n >= max) break;
       }
     }
+    const CURRENTS = [                      // [name, warm?, path (lon, lat)]
+      ["Gulf Stream", 1, [[-80, 25], [-80, 30], [-75, 35], [-70, 38], [-60, 40], [-50, 42], [-40, 45]]], ["North Atlantic Drift", 1, [[-40, 45], [-30, 50], [-20, 55], [-10, 58], [0, 62]]],
+      ["Labrador Current", 0, [[-60, 62], [-57, 57], [-54, 52], [-52, 48], [-50, 44]]], ["Canary Current", 0, [[-15, 40], [-17, 33], [-18, 27], [-20, 20]]],
+      ["North Equatorial Current", 1, [[-20, 15], [-35, 14], [-50, 13], [-62, 14]]], ["South Equatorial Current", 1, [[5, -2], [-10, -4], [-25, -6], [-35, -8]]],
+      ["Brazil Current", 1, [[-35, -10], [-38, -18], [-42, -25], [-48, -32], [-52, -38]]], ["Falklands Current", 0, [[-62, -52], [-60, -45], [-57, -40]]],
+      ["Benguela Current", 0, [[18, -34], [15, -28], [12, -20], [9, -12]]], ["Agulhas Current", 1, [[40, -15], [36, -22], [32, -28], [28, -33], [22, -37], [18, -39]]],
+      ["Kuroshio", 1, [[122, 22], [125, 27], [130, 31], [136, 34], [142, 36], [150, 37]]], ["North Pacific Current", 1, [[150, 40], [170, 42], [-170, 43], [-150, 44], [-135, 45]]],
+      ["Oyashio", 0, [[158, 52], [152, 47], [146, 43], [144, 40]]], ["California Current", 0, [[-125, 48], [-124, 40], [-120, 33], [-115, 25]]], ["Alaska Current", 1, [[-135, 50], [-140, 56], [-148, 59]]],
+      ["North Equatorial Current", 1, [[-110, 15], [-140, 14], [-170, 13], [160, 14], [130, 15]]], ["South Equatorial Current", 1, [[-85, -3], [-110, -5], [-140, -7], [-170, -9], [160, -10]]],
+      ["Equatorial Counter Current", 1, [[130, 6], [160, 6], [-170, 6], [-130, 6], [-95, 6]]], ["Humboldt (Peru) Current", 0, [[-75, -45], [-75, -35], [-77, -25], [-80, -15], [-82, -5]]],
+      ["East Australian Current", 1, [[155, -15], [154, -22], [153, -28], [152, -33], [155, -38]]], ["Leeuwin Current", 1, [[114, -22], [113, -28], [115, -34], [120, -35]]],
+      ["Somali Current (summer monsoon)", 1, [[45, -2], [48, 3], [51, 8], [55, 12]]], ["South Equatorial Current", 1, [[110, -12], [90, -13], [70, -14], [55, -15], [45, -15]]],
+      ["Indonesian Throughflow", 1, [[125, -5], [120, -9], [115, -11], [110, -12]]],
+      ["Antarctic Circumpolar Current", 0, d3.range(-180, 181, 15).map((x) => [x, -55 + 3 * Math.sin(x * Math.PI / 90)])]];
+    const GYRES = [["North Atlantic Gyre", -45, 30], ["South Atlantic Gyre", -15, -28], ["North Pacific Gyre", -160, 30], ["South Pacific Gyre", -120, -30], ["Indian Ocean Gyre", 80, -28]];
+    function drawOcean() {
+      for (const [name, warm, pts] of CURRENTS) {
+        const dense = []; for (let i = 1; i < pts.length; i++) for (let k = 0; k < 6; k++) { const a = pts[i - 1], b = pts[i]; dense.push([a[0] + (b[0] - a[0]) * k / 6, a[1] + (b[1] - a[1]) * k / 6]); }
+        dense.push(pts[pts.length - 1]); arrow(dense, warm ? "#ff7a59" : "#6fb6ff", 3);
+        const m = pts[Math.floor(pts.length / 2)]; label(name, m[0], m[1] + 2.2, { size: 11.5, color: warm ? "#ffb39c" : "#a9d4ff", weight: 600 });
+      }
+      for (const [name, lo, la] of GYRES) { label(name, lo, la, { size: 15, color: "#ffffff", weight: 700 });
+        const ring = d3.range(0, 361, 10).map((a) => [lo + 22 * Math.cos(a * Math.PI / 180) / Math.cos(la * Math.PI / 180) * 0.9, la + 10 * Math.sin(a * Math.PI / 180) * (la > 0 ? -1 : 1)]);
+        bctx.beginPath(); path({ type: "LineString", coordinates: ring }); bctx.setLineDash([3, 6]); bctx.strokeStyle = "rgba(255,255,255,.35)"; bctx.lineWidth = 1.2; bctx.stroke(); bctx.setLineDash([]); }
+    }
     function drawOverlays() {
+      if (st.ocean) drawOcean();
       const c = -st.rot[0];
       if (st.cells) {
         for (const cell of CELLS) for (const [a, b] of cell.bands) {
@@ -362,18 +404,23 @@
     function tick() {
       raf = requestAnimationFrame(tick);
       if (!running || !st.wind || st.dragging || !W) return;
-      const l = L(); if (!l.u) return;
+      const l = L(), S = st.surf || {}; if (!l.u) return;
+      const mode = st.flow, U = mode === "waves" ? S.wu : mode === "currents" ? S.cu : l.u, V = mode === "waves" ? S.wv : mode === "currents" ? S.cv : l.v;
+      if (!U) return;
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       fctx.globalCompositeOperation = "destination-in"; fctx.fillStyle = "rgba(0,0,0,0.94)"; fctx.fillRect(0, 0, W, H);
       fctx.globalCompositeOperation = "source-over"; fctx.lineWidth = 1.4; fctx.lineCap = "round";
       const sp = 0.02 / st.k, bins = Array.from({ length: NBIN }, () => []);
       for (const p of parts) {
-        const u = sample(l.u, p.lon, p.lat), v = sample(l.v, p.lon, p.lat);
+        let u = sample(U, p.lon, p.lat), v = sample(V, p.lon, p.lat), shade;
         if (!isFinite(u) || ++p.age > p.life || !visible(p.lon, p.lat)) { Object.assign(p, spawn(false)); continue; }
+        if (mode === "waves") { const h = sample(S.hs, p.lon, p.lat); shade = (h / 12) * 200; u *= 9; v *= 9; }          // unit vectors: show direction, colour by height
+        else if (mode === "currents") { shade = (Math.hypot(u, v) / 2) * 200; u *= 14; v *= 14; }                          // slow currents, sped up to be seen
+        else shade = Math.hypot(u, v) * 3.6;
         const a = proj([p.lon, p.lat]);
         p.lon += u * sp / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)); p.lat = Math.max(-85, Math.min(85, p.lat + v * sp));
         const b = proj([p.lon, p.lat]); if (!a || !b || Math.abs(a[0] - b[0]) > 30) continue;
-        bins[binOf(Math.hypot(u, v) * 3.6)].push(a[0], a[1], b[0], b[1]);
+        bins[binOf(shade)].push(a[0], a[1], b[0], b[1]);
       }
       for (let i = 0; i < NBIN; i++) { const q = bins[i]; if (!q.length) continue;
         fctx.beginPath(); for (let k = 0; k < q.length; k += 4) { fctx.moveTo(q[k], q[k + 1]); fctx.lineTo(q[k + 2], q[k + 3]); }
@@ -412,7 +459,10 @@
         hgt: st.level === 1000 ? null : Math.round(sample(l.hgt, lon, lat)), rh: Math.round(sample(l.rh, lon, lat)),
         mslp: st.surf ? Math.round(sample(st.surf.mslp, lon, lat)) : null, pwat: st.surf ? Math.round(sample(st.surf.pwat, lon, lat)) : null,
         sst: st.surf ? sample(st.surf.sst, lon, lat) : null, tmp: sample(l.tmp, lon, lat), cape: st.surf ? sample(st.surf.cape, lon, lat) : NaN,
-        rain: st.surf ? sample(st.surf.rain6, lon, lat) : NaN, vort: l.u ? sample(vorticity(l), lon, lat) : NaN };
+        rain: st.surf ? sample(st.surf.rain6, lon, lat) : NaN, vort: l.u ? sample(vorticity(l), lon, lat) : NaN,
+        hs: st.surf ? sample(st.surf.hs, lon, lat) : NaN, wto: st.surf && st.surf.wu ? DIRS[Math.round(((Math.atan2(sample(st.surf.wu, lon, lat), sample(st.surf.wv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null,
+        cur: st.surf && st.surf.cu ? Math.hypot(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) : NaN,
+        cto: st.surf && st.surf.cu ? DIRS[Math.round(((Math.atan2(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null };
     }
     new ResizeObserver(() => resize()).observe(el);
 

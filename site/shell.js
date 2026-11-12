@@ -282,12 +282,18 @@
   $("#ly-wind").addEventListener("change", (e) => { both((m) => m.set("wind", e.target.checked)); legend(); });
   $("#ly-cont").addEventListener("change", (e) => { both((m) => m.set("contours", e.target.checked)); legend(); });
   $("#ly-storms").addEventListener("change", (e) => both((m) => m.set("storms", e.target.checked)));
+  $$('input[name="flow"]').forEach((r) => r.addEventListener("change", async () => {
+    if (!r.checked) return; await initMap();
+    if (wx) await wx.set("flow", r.value); if (wx3) { if (r.value !== "wind" && wx3.get("mode") === "stack") { $("#ly-stack").checked = false; await wx3.set("mode", "single"); } await wx3.set("flow", r.value); }
+    if (r.value !== "wind") { const sc = r.value === "waves" ? "hs" : "curspd"; const rr = $(`input[name="scalar"][value="${sc}"]`); if (rr && !rr.checked) { rr.checked = true; rr.dispatchEvent(new Event("change")); } }
+    legend();
+  }));
   $("#ly-labels").addEventListener("change", (e) => both((m) => m.set("labels", e.target.checked)));
   $$('input[name="scalar"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) { both((m) => m.set("scalar", r.value)); legend(); } }));
   $$(".chip[data-ov]").forEach((b) => b.addEventListener("click", async () => {
     await initMap(); const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on));
     if (wx) wx.set(b.dataset.ov, on);
-    if (on) { if (MODE !== "2d") setMode("2d"); region({ cells: "hadley", walker: "walker", nino: "nino34" }[b.dataset.ov]); } else $("#wx-info").hidden = true;
+    if (on) { if (MODE !== "2d") setMode("2d"); region({ cells: "hadley", walker: "walker", nino: "nino34", ocean: "ocean" }[b.dataset.ov]); } else $("#wx-info").hidden = true;
   }));
   $("#wz-in").addEventListener("click", () => { const c = cur(); if (c) c.zoomIn(); }); $("#wz-out").addEventListener("click", () => { const c = cur(); if (c) c.zoomOut(); });
   $("#wx-info-x").addEventListener("click", () => { $("#wx-info").hidden = true; });
@@ -299,7 +305,10 @@
     const box = $("#wx-legend"); box.textContent = ""; if (!wx) return;
     const F = window.WxMap.FLOW, s = wx.get("scalar"), R = wx.rampFor ? wx.rampFor(s) : window.WxMap.RAMPS[s];
     const unitK = window.I18N && window.I18N.lang === "hi" ? "किमी/घंटा" : "km/h";
-    if (wx.get("wind")) box.append(...bar(t(s === "speed" ? "lg.both" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
+    const fl = wx.get("flow");
+    if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
+    else if (wx.get("wind") && fl === "currents") box.append(...bar(t("lg.flcur"), F.stops, 0, 2, "m/s"));
+    else if (wx.get("wind")) box.append(...bar(t(s === "speed" ? "lg.both" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
     if (R && s !== "speed") box.append(...bar(t(`lg.${s}`), R.stops, R.lo, R.hi, R.unit));
     if (R && s === "speed" && !wx.get("wind")) box.append(...bar(t("lg.both"), R.stops, R.lo, R.hi, unitK));
     const p = wx.levels()[+$("#lv").value];
@@ -315,6 +324,8 @@
     const s2 = []; if (r.mslp) s2.push(t("rd.mslp", { v: r.mslp })); if (isFinite(r.pwat)) s2.push(t("rd.pwat", { v: r.pwat }));
     if (r.sst != null && isFinite(r.sst)) s2.push(t("rd.sst", { v: r.sst.toFixed(1) }) + (r.sst >= 26.5 ? t("rd.warm") : ""));
     if (isFinite(r.tmp)) a.push(t("rd.tmp", { v: r.tmp.toFixed(1) })); if (isFinite(r.vort)) a.push(t("rd.vort", { v: r.vort.toFixed(1) }));
+    if (isFinite(r.hs)) s2.push(t("rd.hs", { v: r.hs.toFixed(1), dir: t(`dir16.${r.wto}`, {}, r.wto) }));
+    if (isFinite(r.cur) && r.cur > 0.02) s2.push(t("rd.cur", { v: r.cur.toFixed(2), dir: t(`dir16.${r.cto}`, {}, r.cto) }));
     if (isFinite(r.cape)) s2.push(t("rd.cape", { v: Math.round(r.cape) })); if (isFinite(r.rain)) s2.push(t("rd.rain", { v: r.rain.toFixed(1) }));
     b.append(el("h3", { text: `${lat}, ${lon}` }), el("p", { text: `${lvl}: ${a.join(", ")}${stop()}` }), el("p", { text: s2.join(", ") + stop() }));
     const F = window.WxMap.FLOW, c = r.wind_kmh != null ? F.css[Math.max(0, Math.min(255, Math.round(r.wind_kmh / F.hi * 255)))] : null;
@@ -326,6 +337,7 @@
       return ["Walker circulation", `Along the equatorial Pacific, trade winds push warm water west. Air rises over the warm western Pacific and Maritime Continent, flows east high up, and sinks over the cool eastern Pacific.${e ? ` Right now ENSO is ${e.phase} (Niño 3.4 index ${e.value > 0 ? "+" : ""}${e.value} °C, ${e.season}).` : ""} In El Niño the loop weakens and its rising branch moves east; in La Niña it strengthens.`]; },
     nino34: () => { const e = CLIMO && CLIMO.climate && CLIMO.climate.enso, i = CLIMO && CLIMO.climate && CLIMO.climate.iod;
       return ["Niño 3.4 and the Indian Ocean Dipole", `Niño 3.4 (5°S–5°N, 170°W–120°W): its sea temperature compared with normal measures El Niño (0.5 °C or more above) and La Niña (0.5 °C or more below).${e ? ` Latest: ${e.value > 0 ? "+" : ""}${e.value} °C, ${e.phase}.` : ""} The Indian Ocean Dipole compares a western box (50–70°E, 10°S–10°N) with an eastern box (90–110°E, 10°S–0°).${i ? ` Latest: ${i.value > 0 ? "+" : ""}${i.value}, ${i.phase}.` : ""}`]; } };
+  REGION_TEXT.ocean = () => [t("oc.h"), t("oc.p")];
   function region(k) { const f = REGION_TEXT[k]; if (!f) return; const [h, x] = f(); const b = $("#wx-info-body"); b.textContent = ""; $("#wx-info").hidden = false; b.append(el("h3", { text: h }), el("p", { text: x })); }
 
   // ---------------------------------------------------------------- Learn diagrams

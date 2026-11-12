@@ -110,11 +110,17 @@
     <label class="tgl"><input type="checkbox" id="ly-storms" checked> <span data-i18n="ly.storms">Tropical cyclones</span></label>
     <label class="tgl"><input type="checkbox" id="ly-labels" checked> <span data-i18n="ly.labels">Place names</span></label>
     <label class="tgl"><input type="checkbox" id="ly-towns"> <span data-i18n="ly.towns">Coastal towns: 5-day forecast</span></label>
+    <h3 data-i18n="fl.h">Moving lines show</h3>
+    <label class="opt"><input type="radio" name="flow" value="wind" checked> <span data-i18n="fl.wind">Wind at this height</span></label>
+    <label class="opt"><input type="radio" name="flow" value="waves"> <span data-i18n="fl.waves">Ocean waves (direction of travel)</span></label>
+    <label class="opt"><input type="radio" name="flow" value="currents"> <span data-i18n="fl.currents">Ocean surface currents</span></label>
     <h3 data-i18n="ly.colour">Colour the map by</h3>
     <label class="opt"><input type="radio" name="scalar" value="speed" checked> <span data-i18n="ly.speed">Wind speed</span></label>
     <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
     <label class="opt"><input type="radio" name="scalar" value="rh"> <span data-i18n="ly.rh">Humidity at this level</span></label>
     <label class="opt"><input type="radio" name="scalar" value="sst"> <span data-i18n="ly.sst">Sea surface temperature</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="hs"> <span data-i18n="ly.hs">Sea wave height</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="curspd"> <span data-i18n="ly.curspd">Ocean current speed</span></label>
     <label class="opt"><input type="radio" name="scalar" value="tmp"> <span data-i18n="ly.tmp">Temperature at this height</span></label>
     <label class="opt"><input type="radio" name="scalar" value="vort"> <span data-i18n="ly.vort">Spin of the air (vorticity)</span></label>
     <label class="opt"><input type="radio" name="scalar" value="shear"> <span data-i18n="ly.shear">Wind shear, 850–200 hPa</span></label>
@@ -125,6 +131,7 @@
     <button type="button" class="chip" data-ov="cells" aria-pressed="false" data-i18n="ov.cells">Hadley, Ferrel and polar cells</button>
     <button type="button" class="chip" data-ov="walker" aria-pressed="false" data-i18n="ov.walker">Walker circulation</button>
     <button type="button" class="chip" data-ov="nino" aria-pressed="false" data-i18n="ov.nino">El Niño and Indian Ocean Dipole regions</button>
+    <button type="button" class="chip" data-ov="ocean" aria-pressed="false" data-i18n="ov.ocean">Ocean currents and gyres</button>
   </aside>
   <div class="timebar" role="group" aria-labelledby="tm-l">
     <button type="button" class="tb" id="tm-play" aria-label="Play through the days">▶</button>
