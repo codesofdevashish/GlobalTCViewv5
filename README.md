@@ -71,50 +71,6 @@ For every storm the daily job also builds an indicative impact layer on a 0.1° 
 then about 40 MB cached by the workflow). If that step fails, the site still builds without the
 Impact view.
 
-## Set up (once)
-
-1. Create a **public** repository on GitHub and push these files to it.
-2. Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. **Actions → Daily cyclone videos → Run workflow** to build the site the first time
-   (about 5–10 min per active storm). After that it runs by itself every day.
-4. The site is at `https://<your-username>.github.io/<repo-name>/`.
-5. Edit `site/config.js` with your name, links and research interests, then commit.
-
-## Settings
-
-`scripts/run_daily.py` options (edit the command in the workflow):
-
-| option | default | meaning |
-|---|---|---|
-| `--max-days` | 5 | length of each video window |
-| `--max-storms` | 12 | most storms rendered per day (strongest first) |
-| `--archive-max` | 40 | number of past storms kept on the site |
-| `--include-invests` | off | also render invest areas |
-
-Look of the videos: `CFG` at the top of `tc3d/render.py`.
-
-## Notes
-
-- Rapid intensification is flagged only from the official intensities (increase of at least
-  30 kt in 24 h), never from GFS winds.
-- Southern Hemisphere storms are handled (vorticity sign flipped), and so are storms crossing 180°.
-- GitHub Pages sites are limited to about 1 GB; each video is roughly 5–15 MB, which is why the
-  archive is capped.
-- This is a research visualisation, not a forecast.
-
-The site has light and dark themes (toggle in the top bar). Archived storms without an impact layer get one computed from their saved track (up to 20 a day).
-
-## Forecasts, history and climate (all free, no login)
-
-- **Forecast** (inspector tab, track map, globe): GEFS ensemble members, ensemble mean and GFS from NCEP's
-  cyclone tracker on NOMADS (`scripts/forecast.py`), with links to each basin's official agency. Model guidance only.
-- **History** (inspector tab, track map): IBTrACS v04r01 since 1980 (`scripts/context.py`): storms that passed near
-  the current position at this time of year, how strong they became, and the closest analogs.
-- **Season vs normal and climate state** (Season panel, storm list): named storms and ACE vs 1991-2020 to the same
-  date; ENSO (NOAA CPC ONI), IOD (NOAA PSL DMI), MJO (Australian Bureau of Meteorology RMM) (`scripts/extras.py`).
-- **Infrared** on the globe: Himawari or GOES clean-IR band from NASA GIBS (no free layer covers the western Indian Ocean).
-- **RSS feed** (`feed.xml`), **CSV downloads** of every track and hourly diagnostics, and a **glossary**.
-
 ## Languages
 
 `site/i18n.js` holds the translations: static text is marked with `data-i18n` in `index.html`, and generated sentences
