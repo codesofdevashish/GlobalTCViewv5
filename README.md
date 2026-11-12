@@ -17,7 +17,7 @@ Every tropical cyclone on Earth, explained for the people who live with them and
 
 # Tropical cyclones in 3D, updated daily
 
-A GitHub Pages site (https://codesofdevashish.github.io/GlobalTCViewv5/#today) that shows a 3D flow animation for every active tropical cyclone on Earth,
+A GitHub Pages site that shows a 3D flow animation for every active tropical cyclone on Earth,
 rebuilt every morning by GitHub Actions. It also serves as a portfolio page (edit `site/config.js`).
 
 **What happens each day** (`.github/workflows/update.yml`, 06:40 UTC)
@@ -69,6 +69,28 @@ For every storm the daily job also builds an indicative impact layer on a 0.1° 
 then about 40 MB cached by the workflow). If that step fails, the site still builds without the
 Impact view.
 
+## Set up (once)
+
+1. Create a **public** repository on GitHub and push these files to it.
+2. Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. **Actions → Daily cyclone videos → Run workflow** to build the site the first time
+   (about 5–10 min per active storm). After that it runs by itself every day.
+4. The site is at `https://<your-username>.github.io/<repo-name>/`.
+5. Edit `site/config.js` with your name, links and research interests, then commit.
+
+## Settings
+
+`scripts/run_daily.py` options (edit the command in the workflow):
+
+| option | default | meaning |
+|---|---|---|
+| `--max-days` | 5 | length of each video window |
+| `--max-storms` | 12 | most storms rendered per day (strongest first) |
+| `--archive-max` | 40 | number of past storms kept on the site |
+| `--include-invests` | off | also render invest areas |
+
+Look of the videos: `CFG` at the top of `tc3d/render.py`.
+
 ## Notes
 
 - Rapid intensification is flagged only from the official intensities (increase of at least
@@ -114,3 +136,14 @@ Safety and warning text should be checked by a native speaker.
   temperature, vorticity, 850-200 hPa shear, CAPE and 6-hour rain added to the colour layers.
 
 All of this uses free, keyless sources and stays well within GitHub's free limits for public repositories.
+
+Place names (Natural Earth populated places, with Hindi names) appear by importance as you zoom, without overlapping; coastlines sharpen from 1:110m to 1:50m to 1:10m on the flat map, and are drawn as vector lines on the 3D globe.
+
+## Tests, licence and citation
+
+- `pytest -q` runs the tests of the scientific core (forecast verification, storm-surge index, RI guidance,
+  weather-file encoding, land mask); they also run on GitHub for every push (`.github/workflows/tests.yml`).
+- Code: MIT licence (`LICENSE`). Data keep their providers' terms.
+- To cite the software, use `CITATION.cff` (GitHub shows a "Cite this repository" button).
+- Map settings can be linked directly, for example `#map?view=2d&layer=sst&level=1000&ov=cells&t=24&lon=85&lat=12&z=1.6`
+  (the "Copy a link to this view" button on the live map writes them for you).

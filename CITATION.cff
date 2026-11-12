@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use GlobalTCView, please cite it as below."
+title: "GlobalTCView: daily 3D views, forecasts and impact estimates for every tropical cyclone on Earth"
+type: software
+authors:
+  - family-names: Singh
+    given-names: Devashish Prakash
+    affiliation: "MEGHA Lab, Department of Climate Change, Indian Institute of Technology Hyderabad"
+license: MIT
+repository-code: "https://github.com/codesofdevashish/GlobalTCViewv5"
+url: "https://codesofdevashish.github.io/GlobalTCViewv5/"
+keywords: [tropical cyclones, rapid intensification, storm surge, GFS, visualisation, early warning, science communication]
