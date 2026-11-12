@@ -23,6 +23,12 @@
     return Array.from({ length: 256 }, (_, i) => { const c = d3.rgb(s(i / 255)); return [c.r, c.g, c.b]; }); };
   for (const r of Object.values(RAMPS)) r.lut = lut(r.stops);
   FLOW.lut = lut(FLOW.stops); FLOW.css = FLOW.lut.map(([r, g, b]) => `rgb(${r},${g},${b})`);
+  const FLOW_LIGHT = ["#1f5f8b", "#1f8a7a", "#4f8f1f", "#a68a00", "#cc6a10", "#c8372d", "#a3206a", "#6d1a8a"];
+  const binColorLight = (() => { const L = lut(FLOW_LIGHT); return Array.from({ length: 16 }, (_, i) => { const [r, g, b] = L[Math.round((i + 0.5) / 16 * 255)]; return `rgb(${r},${g},${b})`; }); })();
+  const isLight = () => document.documentElement.dataset.theme === "light";
+  const PAL = () => (isLight()
+    ? { sea: "#d4e3ec", land: "#efece4", coast: "rgba(40,60,75,.8)", grat: "rgba(20,40,60,.10)", cont: "rgba(25,45,65,.55)", text: "#13283a", halo: "rgba(255,255,255,.92)", sub: "#2f4658", edge: "rgba(40,70,95,.35)", warm: "#c8372d", cold: "#1f5f9b" }
+    : { sea: "#0b2a3c", land: "#24394a", coast: "rgba(235,242,246,.75)", grat: "rgba(255,255,255,.08)", cont: "rgba(255,255,255,.55)", text: "#ffffff", halo: "rgba(6,22,34,.85)", sub: "#d7e3ea", edge: "rgba(180,210,230,.35)", warm: "#ff7a59", cold: "#6fb6ff" });
   const NBIN = 16, binOf = (kmh) => Math.max(0, Math.min(NBIN - 1, Math.floor(kmh / (FLOW.hi / NBIN))));
   const binColor = Array.from({ length: NBIN }, (_, i) => FLOW.css[Math.round((i + 0.5) / NBIN * 255)]);
 
@@ -254,8 +260,8 @@
       if (!visible(lon, lat)) return; const p = proj([lon, lat]); if (!p) return;
       bctx.font = `${opt.weight || 600} ${opt.size || 13}px "IBM Plex Sans Condensed", "Arial Narrow", sans-serif`;
       bctx.textAlign = opt.align || "center"; bctx.textBaseline = "middle";
-      bctx.lineJoin = "round"; bctx.miterLimit = 2; bctx.lineWidth = 3.5; bctx.strokeStyle = "rgba(6,22,34,.85)"; bctx.strokeText(text, p[0] + (opt.dx || 0), p[1]);
-      bctx.fillStyle = opt.color || "#fff"; bctx.fillText(text, p[0] + (opt.dx || 0), p[1]);
+      const P_ = PAL(); bctx.lineJoin = "round"; bctx.miterLimit = 2; bctx.lineWidth = 3.5; bctx.strokeStyle = P_.halo; bctx.strokeText(text, p[0] + (opt.dx || 0), p[1]);
+      bctx.fillStyle = opt.color || P_.text; bctx.fillText(text, p[0] + (opt.dx || 0), p[1]);
     }
     function drawPlaces() {
       const z = Math.log2(2 * Math.PI * R / 256) + 0.9, boxes = [], max = 240;   // the web-map zoom the globe is shown at
@@ -268,39 +274,42 @@
         if (b[0] < 0 || b[2] > W || b[1] < 0 || b[3] > H) continue;
         if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
         boxes.push(b); const big = p[3] <= 3;
-        bctx.beginPath(); bctx.arc(xy[0], xy[1], big ? 2.6 : 2, 0, 2 * Math.PI); bctx.fillStyle = "#fff"; bctx.fill();
-        bctx.lineJoin = "round"; bctx.lineWidth = 3; bctx.strokeStyle = "rgba(6,22,34,.85)"; bctx.textAlign = "left";
+        const Pp = PAL(); bctx.beginPath(); bctx.arc(xy[0], xy[1], big ? 2.6 : 2, 0, 2 * Math.PI); bctx.fillStyle = Pp.text; bctx.fill();
+        bctx.lineJoin = "round"; bctx.lineWidth = 3; bctx.strokeStyle = Pp.halo; bctx.textAlign = "left";
         bctx.font = `${big ? 600 : 500} ${big ? 13 : 12}px "IBM Plex Sans Condensed", "Arial Narrow", sans-serif`;
-        bctx.strokeText(name, xy[0] + 5, xy[1]); bctx.fillStyle = big ? "#ffffff" : "#d7e3ea"; bctx.fillText(name, xy[0] + 5, xy[1]);
+        bctx.strokeText(name, xy[0] + 5, xy[1]); bctx.fillStyle = big ? Pp.text : Pp.sub; bctx.fillText(name, xy[0] + 5, xy[1]);
         if (++n >= max) break;
       }
     }
     const CURRENTS = [                      // [name, warm?, path (lon, lat)]
-      ["Gulf Stream", 1, [[-80, 25], [-80, 30], [-75, 35], [-70, 38], [-60, 40], [-50, 42], [-40, 45]]], ["North Atlantic Drift", 1, [[-40, 45], [-30, 50], [-20, 55], [-10, 58], [0, 62]]],
-      ["Labrador Current", 0, [[-60, 62], [-57, 57], [-54, 52], [-52, 48], [-50, 44]]], ["Canary Current", 0, [[-15, 40], [-17, 33], [-18, 27], [-20, 20]]],
+      ["Gulf Stream", 2, [[-80, 25], [-80, 30], [-75, 35], [-70, 38], [-60, 40], [-50, 42], [-40, 45]]], ["North Atlantic Drift", 1, [[-40, 45], [-30, 50], [-20, 55], [-10, 58], [0, 62]]],
+      ["Labrador Current", -2, [[-60, 62], [-57, 57], [-54, 52], [-52, 48], [-50, 44]]], ["Canary Current", 0, [[-15, 40], [-17, 33], [-18, 27], [-20, 20]]],
       ["North Equatorial Current", 1, [[-20, 15], [-35, 14], [-50, 13], [-62, 14]]], ["South Equatorial Current", 1, [[5, -2], [-10, -4], [-25, -6], [-35, -8]]],
       ["Brazil Current", 1, [[-35, -10], [-38, -18], [-42, -25], [-48, -32], [-52, -38]]], ["Falklands Current", 0, [[-62, -52], [-60, -45], [-57, -40]]],
-      ["Benguela Current", 0, [[18, -34], [15, -28], [12, -20], [9, -12]]], ["Agulhas Current", 1, [[40, -15], [36, -22], [32, -28], [28, -33], [22, -37], [18, -39]]],
-      ["Kuroshio", 1, [[122, 22], [125, 27], [130, 31], [136, 34], [142, 36], [150, 37]]], ["North Pacific Current", 1, [[150, 40], [170, 42], [-170, 43], [-150, 44], [-135, 45]]],
+      ["Benguela Current", -2, [[18, -34], [15, -28], [12, -20], [9, -12]]], ["Agulhas Current", 2, [[40, -15], [36, -22], [32, -28], [28, -33], [22, -37], [18, -39]]],
+      ["Kuroshio", 2, [[122, 22], [125, 27], [130, 31], [136, 34], [142, 36], [150, 37]]], ["North Pacific Current", 1, [[150, 40], [170, 42], [-170, 43], [-150, 44], [-135, 45]]],
       ["Oyashio", 0, [[158, 52], [152, 47], [146, 43], [144, 40]]], ["California Current", 0, [[-125, 48], [-124, 40], [-120, 33], [-115, 25]]], ["Alaska Current", 1, [[-135, 50], [-140, 56], [-148, 59]]],
       ["North Equatorial Current", 1, [[-110, 15], [-140, 14], [-170, 13], [160, 14], [130, 15]]], ["South Equatorial Current", 1, [[-85, -3], [-110, -5], [-140, -7], [-170, -9], [160, -10]]],
-      ["Equatorial Counter Current", 1, [[130, 6], [160, 6], [-170, 6], [-130, 6], [-95, 6]]], ["Humboldt (Peru) Current", 0, [[-75, -45], [-75, -35], [-77, -25], [-80, -15], [-82, -5]]],
+      ["Equatorial Counter Current", 1, [[130, 6], [160, 6], [-170, 6], [-130, 6], [-95, 6]]], ["Humboldt (Peru) Current", -2, [[-75, -45], [-75, -35], [-77, -25], [-80, -15], [-82, -5]]],
       ["East Australian Current", 1, [[155, -15], [154, -22], [153, -28], [152, -33], [155, -38]]], ["Leeuwin Current", 1, [[114, -22], [113, -28], [115, -34], [120, -35]]],
-      ["Somali Current (summer monsoon)", 1, [[45, -2], [48, 3], [51, 8], [55, 12]]], ["South Equatorial Current", 1, [[110, -12], [90, -13], [70, -14], [55, -15], [45, -15]]],
+      ["Somali Current (summer monsoon)", 2, [[45, -2], [48, 3], [51, 8], [55, 12]]], ["South Equatorial Current", 1, [[110, -12], [90, -13], [70, -14], [55, -15], [45, -15]]],
       ["Indonesian Throughflow", 1, [[125, -5], [120, -9], [115, -11], [110, -12]]],
-      ["Antarctic Circumpolar Current", 0, d3.range(-180, 181, 15).map((x) => [x, -55 + 3 * Math.sin(x * Math.PI / 90)])]];
-    const GYRES = [["North Atlantic Gyre", -45, 30], ["South Atlantic Gyre", -15, -28], ["North Pacific Gyre", -160, 30], ["South Pacific Gyre", -120, -30], ["Indian Ocean Gyre", 80, -28]];
-    function drawOcean() {
-      for (const [name, warm, pts] of CURRENTS) {
+      ["Antarctic Circumpolar Current", -2, d3.range(-180, 181, 15).map((x) => [x, -55 + 3 * Math.sin(x * Math.PI / 90)])]];
+    const GYRES = [["North Atlantic Gyre ↻", -45, 30], ["South Atlantic Gyre ↺", -15, -28], ["North Pacific Gyre ↻", -160, 30], ["South Pacific Gyre ↺", -120, -30], ["Indian Ocean Gyre ↺", 80, -28]];
+    function drawOcean() {                                     // major currents always; the others and their names appear as you zoom in
+      const P = PAL(), close = st.k >= 1.7, boxes = [];
+      for (const [name, kind, pts] of CURRENTS) {
+        const major = Math.abs(kind) === 2, warm = kind > 0; if (!major && !close) continue;
         const dense = []; for (let i = 1; i < pts.length; i++) for (let k = 0; k < 6; k++) { const a = pts[i - 1], b = pts[i]; dense.push([a[0] + (b[0] - a[0]) * k / 6, a[1] + (b[1] - a[1]) * k / 6]); }
-        dense.push(pts[pts.length - 1]); arrow(dense, warm ? "#ff7a59" : "#6fb6ff", 3);
-        const m = pts[Math.floor(pts.length / 2)]; label(name, m[0], m[1] + 2.2, { size: 11.5, color: warm ? "#ffb39c" : "#a9d4ff", weight: 600 });
+        dense.push(pts[pts.length - 1]); arrow(dense, warm ? P.warm : P.cold, major ? 2.4 : 1.6);
+        const m = pts[Math.floor(pts.length / 2)]; if (!visible(m[0], m[1])) continue; const q = proj(m); if (!q) continue;
+        const b = [q[0] - 60, q[1] - 6, q[0] + 60, q[1] + 22]; if (boxes.some((o) => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])) continue; boxes.push(b);
+        label(name.replace(" Current", ""), m[0], m[1] + 2.2, { size: 11, color: warm ? P.warm : P.cold, weight: 600 });
       }
-      for (const [name, lo, la] of GYRES) { label(name, lo, la, { size: 15, color: "#ffffff", weight: 700 });
-        const ring = d3.range(0, 361, 10).map((a) => [lo + 22 * Math.cos(a * Math.PI / 180) / Math.cos(la * Math.PI / 180) * 0.9, la + 10 * Math.sin(a * Math.PI / 180) * (la > 0 ? -1 : 1)]);
-        bctx.beginPath(); path({ type: "LineString", coordinates: ring }); bctx.setLineDash([3, 6]); bctx.strokeStyle = "rgba(255,255,255,.35)"; bctx.lineWidth = 1.2; bctx.stroke(); bctx.setLineDash([]); }
+      for (const [name, lo, la] of GYRES) label(name, lo, la, { size: close ? 15 : 13, weight: 700 });
     }
     function drawOverlays() {
+      const PO = PAL(), ink = PO.text, ink2 = isLight() ? "rgba(19,40,58,.45)" : "rgba(255,255,255,.45)";
       if (st.ocean) drawOcean();
       const c = -st.rot[0];
       if (st.cells) {
@@ -310,23 +319,23 @@
         }
         for (const [la, t] of BELTS) label(t, c, la - (Math.abs(la) === 30 ? 0 : 3.5) * Math.sign(la), { size: 12, weight: 500 });
         for (const la of [-60, -30, 30, 60]) { bctx.beginPath(); path({ type: "LineString", coordinates: d3.range(-180, 181, 5).map((x) => [x, la]) });
-          bctx.setLineDash([6, 6]); bctx.strokeStyle = "rgba(255,255,255,.45)"; bctx.lineWidth = 1; bctx.stroke(); bctx.setLineDash([]); }
+          bctx.setLineDash([6, 6]); bctx.strokeStyle = ink2; bctx.lineWidth = 1; bctx.stroke(); bctx.setLineDash([]); }
         const it = itcz();
         if (it) { bctx.beginPath(); path(it); bctx.strokeStyle = "#ffd27a"; bctx.lineWidth = 2.5; bctx.setLineDash([2, 5]); bctx.stroke(); bctx.setLineDash([]);
           const p = it.coordinates.reduce((b, q) => (Math.abs(((q[0] - c + 540) % 360) - 180) < Math.abs(((b[0] - c + 540) % 360) - 180) ? q : b)); label("ITCZ: rising air, heavy rain (from today's water vapour)", c, p[1] + 3.5, { size: 12, color: "#ffd27a" }); }
         for (const s of [1, -1]) {                             // surface flow arrows in each belt
-          arrow(d3.range(c + 14, c - 15, -2).map((x) => [x, s * (20 - (c + 14 - x) * 0.25)]), "rgba(255,255,255,.8)");
-          arrow(d3.range(c - 14, c + 15, 2).map((x) => [x, s * (40 + (x - c + 14) * 0.22)]), "rgba(255,255,255,.8)");
+          arrow(d3.range(c + 14, c - 15, -2).map((x) => [x, s * (20 - (c + 14 - x) * 0.25)]), ink);
+          arrow(d3.range(c - 14, c + 15, 2).map((x) => [x, s * (40 + (x - c + 14) * 0.22)]), ink);
         }
       }
       if (st.walker) {
         bctx.beginPath(); path(REGIONS.walker.geo); bctx.fillStyle = "rgba(47,111,163,.18)"; bctx.fill();
         const enso = st.climate && st.climate.enso, el = enso && enso.phase === "El Niño", la = enso && enso.phase === "La Niña";
-        arrow(d3.range(275, 125, -5).map((x) => [x, 0]), el ? "rgba(255,255,255,.45)" : "#fff", el ? 2 : 3.5);
+        arrow(d3.range(275, 125, -5).map((x) => [x, 0]), el ? ink2 : ink, el ? 2 : 3.5);
         arrow(d3.range(130, 270, 5).map((x) => [x, 7 + Math.sin((x - 130) / 140 * Math.PI) * 2]), "rgba(255,210,122,.95)", 2.5);
         for (const [x, up] of [[el ? 190 : 130, true], [270, false]]) {
           const p = visible(x, 0) && proj([x, 0]); if (!p) continue;
-          bctx.beginPath(); bctx.arc(p[0], p[1], 9, 0, 2 * Math.PI); bctx.strokeStyle = up ? "#ffd27a" : "#fff"; bctx.lineWidth = 2; bctx.stroke();
+          bctx.beginPath(); bctx.arc(p[0], p[1], 9, 0, 2 * Math.PI); bctx.strokeStyle = up ? "#e8a33d" : ink; bctx.lineWidth = 2; bctx.stroke();
           bctx.beginPath(); if (up) { bctx.arc(p[0], p[1], 3, 0, 2 * Math.PI); bctx.fillStyle = "#ffd27a"; bctx.fill(); }      // dot: air rising towards you
           else { bctx.moveTo(p[0] - 5, p[1] - 5); bctx.lineTo(p[0] + 5, p[1] + 5); bctx.moveTo(p[0] + 5, p[1] - 5); bctx.lineTo(p[0] - 5, p[1] + 5); bctx.stroke(); }  // cross: sinking
         }
@@ -349,16 +358,17 @@
     function draw() {
       if (!W) return; fit(); const step = st.dragging ? 6 : 2;
       bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, W, H);
-      bctx.beginPath(); path({ type: "Sphere" }); bctx.fillStyle = "#0b2a3c"; bctx.fill();
-      if (land) { bctx.beginPath(); path(land); bctx.fillStyle = "#24394a"; bctx.fill(); }
+      const P = PAL();
+      bctx.beginPath(); path({ type: "Sphere" }); bctx.fillStyle = P.sea; bctx.fill();
+      if (land) { bctx.beginPath(); path(land); bctx.fillStyle = P.land; bctx.fill(); }
       drawScalar(step);
-      bctx.beginPath(); path(d3.geoGraticule10()); bctx.strokeStyle = "rgba(255,255,255,.08)"; bctx.lineWidth = 0.6; bctx.stroke();
-      if (coast) { bctx.beginPath(); path(coast); bctx.strokeStyle = "rgba(235,242,246,.75)"; bctx.lineWidth = 0.8; bctx.stroke(); }
+      bctx.beginPath(); path(d3.geoGraticule10()); bctx.strokeStyle = P.grat; bctx.lineWidth = 0.6; bctx.stroke();
+      if (coast) { bctx.beginPath(); path(coast); bctx.strokeStyle = P.coast; bctx.lineWidth = 0.8; bctx.stroke(); }
       if (st.scalar === "sst" && st.surf && st.surf.sst && !st.dragging) {         // the 26.5 C line: warm enough for cyclones
         for (const l of gridLines(st.surf.sst, [26.5])) { bctx.beginPath(); path(l); bctx.strokeStyle = "#fff"; bctx.lineWidth = 1.6; bctx.setLineDash([5, 4]); bctx.stroke(); bctx.setLineDash([]); }
       }
       if (st.contours && !st.dragging) {
-        for (const l of contours()) { bctx.beginPath(); path(l); bctx.strokeStyle = "rgba(255,255,255,.55)"; bctx.lineWidth = 0.9; bctx.stroke(); }
+        for (const l of contours()) { bctx.beginPath(); path(l); bctx.strokeStyle = P.cont; bctx.lineWidth = 0.9; bctx.stroke(); }
         for (const c of (contourCache && contourCache.centres) || [])
           label(c.kind, c.lon, c.lat, { size: 22, weight: 700, color: c.kind === "H" ? "#7fb5ff" : "#ff8f8f" });
       }
@@ -383,7 +393,7 @@
       if (st.labels !== false && placeList.length && !st.dragging) drawPlaces();
       if (st.sel) { const s0 = st.storms.find((x) => x.key === st.sel); if (s0 && visible(s0.lon, s0.lat)) { const p = proj([s0.lon, s0.lat]); bctx.beginPath(); bctx.arc(p[0], p[1], 15, 0, 2 * Math.PI); bctx.strokeStyle = "#ffd27a"; bctx.lineWidth = 2.5; bctx.stroke(); } }
       if (marker && visible(...marker)) { const p = proj(marker); bctx.beginPath(); bctx.arc(p[0], p[1], 6, 0, 2 * Math.PI); bctx.strokeStyle = "#fff"; bctx.lineWidth = 2; bctx.stroke(); }
-      bctx.beginPath(); path({ type: "Sphere" }); bctx.strokeStyle = "rgba(180,210,230,.35)"; bctx.lineWidth = 1; bctx.stroke();
+      bctx.beginPath(); path({ type: "Sphere" }); bctx.strokeStyle = P.edge; bctx.lineWidth = 1; bctx.stroke();
     }
 
     // ---------------------------------------------------------------- streamlines
@@ -424,7 +434,7 @@
       }
       for (let i = 0; i < NBIN; i++) { const q = bins[i]; if (!q.length) continue;
         fctx.beginPath(); for (let k = 0; k < q.length; k += 4) { fctx.moveTo(q[k], q[k + 1]); fctx.lineTo(q[k + 2], q[k + 3]); }
-        fctx.strokeStyle = binColor[i]; fctx.stroke(); }
+        fctx.strokeStyle = (isLight() ? binColorLight : binColor)[i]; fctx.stroke(); }
     }
     if (!reduce) raf = requestAnimationFrame(tick);
     document.addEventListener("visibilitychange", () => { running = !document.hidden; });
@@ -472,7 +482,7 @@
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
       focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },

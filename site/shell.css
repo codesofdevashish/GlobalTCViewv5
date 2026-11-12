@@ -151,3 +151,93 @@ h1, h2, h3 { font-family: var(--body); font-weight: 600; letter-spacing: -.01em;
 
 .wx-info { width: min(460px, 60vw); }
 .wx3d-places { position: absolute; inset: 0; pointer-events: none; }
+
+/* =================================================================== TODAY, redesigned */
+.today { max-width: 1240px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: center;
+  padding: clamp(1.2rem, 3vw, 2.2rem); margin: 0 0 clamp(1.5rem, 4vw, 2.5rem); border-radius: 14px;
+  background: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), var(--panel); border: 1px solid var(--line); }
+.hero-kicker { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; color: var(--ink-2); font-size: .9rem; }
+.hero-kicker .live-dot { width: 9px; height: 9px; border-radius: 50%; background: #e0533d; box-shadow: 0 0 0 0 rgba(224, 83, 61, .6); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 9px rgba(224, 83, 61, 0); } 100% { box-shadow: 0 0 0 0 rgba(224, 83, 61, 0); } }
+.hero h1 { font-size: clamp(1.9rem, 3.4vw, 2.9rem); line-height: 1.12; margin: 0; text-wrap: balance; }
+.hero .lede { margin-top: .8rem; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.2rem 0 1rem; }
+.glance { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .5rem; }
+.glance li { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; } .glance li.wide { grid-column: span 2; }
+.glance span { display: block; font-size: .78rem; color: var(--ink-2); } .glance b { font: 700 1.15rem var(--display); }
+.hero-globe { margin: 0; } .t-globe { position: relative; height: clamp(280px, 34vw, 400px); border-radius: 12px; overflow: hidden; background: #071a26; }
+.hero-globe figcaption { font-size: .8rem; color: var(--ink-2); margin-top: .4rem; text-align: center; }
+.today-grid { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.4fr); gap: clamp(1rem, 3vw, 2rem); align-items: start; }
+.today-grid .storms-today { margin-top: 0; } .today-grid .place { border-radius: 12px; }
+.today .rows .row { border-radius: 0 10px 10px 0; margin-bottom: .5rem; background: var(--panel); border-bottom: 0; transition: transform .15s ease, box-shadow .15s ease; }
+.today .rows .row:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.teasers { margin-top: clamp(2rem, 5vw, 3rem); } .teasers h2 { font-size: 1.35rem; margin: 0 0 .8rem; }
+.tz-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
+.tz { text-align: left; display: flex; flex-direction: column; gap: .3rem; padding: 0 0 .9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); cursor: pointer; overflow: hidden; font: inherit;
+  transition: transform .15s ease, box-shadow .15s ease; } .tz:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0, 0, 0, .14); }
+.tz b, .tz > span:last-child { padding: 0 .9rem; } .tz b { font-size: 1.02rem; } .tz > span:last-child { color: var(--ink-2); font-size: .88rem; }
+.tz-art { display: block; height: 92px; margin-bottom: .4rem; }
+.tz-art.cells { background: linear-gradient(180deg, #7aa0d6 0 18%, #2fa39a 18% 40%, #e8a33d 40% 60%, #2fa39a 60% 82%, #7aa0d6 82%); }
+.tz-art.sst { background: linear-gradient(90deg, #2b2a6b, #2e5aa8, #2fa3c4, #5cc48a, #d9d24a, #f29a3a, #d9342b); }
+.tz-art.ocean { background: radial-gradient(circle at 30% 60%, transparent 28%, #ff7a59 29% 33%, transparent 34%), radial-gradient(circle at 72% 40%, transparent 24%, #6fb6ff 25% 29%, transparent 30%), #0b2a3c; }
+.tz-art.game { background: conic-gradient(from 0deg, #e8f0f4 0 8%, transparent 8% 33%, #e8f0f4 33% 41%, transparent 41% 66%, #e8f0f4 66% 74%, transparent 74%), radial-gradient(circle, #0b2a3c 0 12%, #2f6fa3 13%); }
+.prepare .prep-cols { gap: 1rem; } .pcard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; }
+.pic { display: inline-flex; width: 44px; height: 44px; border-radius: 10px; align-items: center; justify-content: center; margin-bottom: .5rem; }
+.pic svg { width: 28px; height: 28px; } .pic.before { background: color-mix(in srgb, #2f6fa3 16%, transparent); color: #2f6fa3; }
+.pic.warn { background: color-mix(in srgb, #e8873a 18%, transparent); color: #c86a1a; } .pic.after { background: color-mix(in srgb, #2e8b57 16%, transparent); color: #2e8b57; }
+@media (max-width: 980px) { .hero, .today-grid { grid-template-columns: 1fr; } .tz-grid { grid-template-columns: 1fr 1fr; } .glance li.wide { grid-column: auto; } }
+
+/* =================================================================== the guide */
+.guide-fab { position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 40; display: flex; align-items: center; gap: .45rem; padding: .65rem 1rem; border-radius: 999px; border: 0;
+  background: var(--accent); color: #fff; font: 600 .95rem var(--body); cursor: pointer; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+.guide-fab svg { width: 20px; height: 20px; } .guide-fab:hover { filter: brightness(1.08); }
+.guide { position: fixed; right: 1.1rem; bottom: 4.6rem; z-index: 41; width: min(380px, calc(100vw - 2rem)); max-height: min(70vh, 620px); display: flex; flex-direction: column;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, .3); overflow: hidden; }
+.guide header { display: flex; justify-content: space-between; align-items: center; padding: .7rem .9rem; border-bottom: 1px solid var(--line); } .guide h2 { margin: 0; font-size: 1.05rem; }
+.g-log { flex: 1; overflow: auto; padding: .8rem .9rem; display: flex; flex-direction: column; gap: .6rem; }
+.g-msg p { margin: 0; line-height: 1.5; font-size: .93rem; } .g-msg.bot { max-width: 92%; } .g-msg.bot p { background: var(--bg); border: 1px solid var(--line); border-radius: 12px 12px 12px 4px; padding: .55rem .7rem; }
+.g-msg.me { align-self: flex-end; max-width: 85%; } .g-msg.me p { background: var(--accent); color: #fff; border-radius: 12px 12px 4px 12px; padding: .45rem .7rem; }
+.g-acts { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .4rem; } .g-acts .btn { padding: .3rem .65rem; font-size: .85rem; }
+.g-sugg { display: flex; flex-wrap: wrap; gap: .3rem; padding: .4rem .9rem .6rem; border-top: 1px solid var(--line); }
+.chip-l { font: 500 .82rem var(--body); padding: .28rem .6rem; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.chip-l:hover { border-color: var(--accent); color: var(--accent); }
+.g-ask { display: flex; gap: .4rem; padding: .6rem .9rem .8rem; border-top: 1px solid var(--line); } .g-ask input { flex: 1; font: inherit; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.tour { position: fixed; inset: 0; z-index: 60; } .tour-spot { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(4, 14, 22, .62); transition: all .25s ease; pointer-events: none; outline: 2px solid #ffd27a; }
+.tour-tip { position: fixed; width: 340px; max-width: calc(100vw - 24px); background: var(--panel); color: var(--ink); border-radius: 12px; padding: .9rem 1rem; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); }
+.tour-tip h3 { margin: .1rem 0 .3rem; font-size: 1.1rem; } .tour-tip p { margin: 0 0 .4rem; font-size: .93rem; } .tt-step { color: var(--ink-2); font-size: .8rem !important; }
+body[data-view="map"] .guide-fab { bottom: 1.1rem; right: auto; left: 1.1rem; }
+
+/* =================================================================== Learn: quizzes and the game */
+.quiz { margin-top: 1.2rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; } .quiz h3 { margin: 0 0 .5rem; font-size: 1rem; }
+.qz { margin: .6rem 0; } .qz-q { font-weight: 600; margin: 0 0 .4rem; } .qz-o { display: block; width: 100%; text-align: left; margin: .25rem 0; padding: .45rem .7rem; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; cursor: pointer; } .qz-o:hover:not(:disabled) { border-color: var(--accent); }
+.qz-o.right { background: color-mix(in srgb, #2e8b57 18%, transparent); border-color: #2e8b57; } .qz-o.wrong { background: color-mix(in srgb, #c8372d 15%, transparent); border-color: #c8372d; }
+.qz-fb { margin: .3rem 0 0; font-size: .9rem; color: var(--ink-2); }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr); gap: 1.2rem; margin-top: .8rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem; }
+.g-controls label { display: block; margin-bottom: .7rem; font-weight: 500; } .g-controls output { float: right; font: 700 1rem var(--display); color: var(--accent); }
+.g-controls input { width: 100%; accent-color: var(--accent); } .g-presets { font-size: .88rem; color: var(--ink-2); } .g-presets .chip-l { margin: .2rem .2rem 0 0; }
+.g-stage svg { width: 100%; height: auto; display: block; background: linear-gradient(#0b2a3c, #12384e); border-radius: 10px; }
+.g-spin { animation: gspin 6s linear infinite; } @keyframes gspin { to { transform: rotate(-360deg); } }
+.g-verdict { font-weight: 700; font-size: 1.05rem; margin: .6rem 0 .3rem; } .g-verdict.go { color: #2e8b57; } .g-verdict.maybe { color: #c86a1a; } .g-verdict.no { color: #b8312a; }
+.g-why { margin: 0; padding-left: 0; list-style: none; font-size: .9rem; } .g-why li { margin: .2rem 0; } .g-why li.ok { color: var(--ink); } .g-why li.no { color: var(--ink-2); }
+@media (max-width: 760px) { .game { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .g-spin, .hero-kicker .live-dot { animation: none; } .tz, .today .rows .row { transition: none; } }
+
+/* =================================================================== the live map in light mode */
+:root[data-theme="light"] .mapview { background: #e4ecf1; color: var(--ink); }
+:root[data-theme="light"] .mapview .layers, :root[data-theme="light"] .mapview .level, :root[data-theme="light"] .mapview .timebar,
+:root[data-theme="light"] .mapview .wx-legend, :root[data-theme="light"] .mapview .wx-info, :root[data-theme="light"] .mapview .sdrawer { background: rgba(255, 255, 255, .94); border-color: var(--line); color: var(--ink); }
+:root[data-theme="light"] .mapview .layers h3, :root[data-theme="light"] .mapview .level label, :root[data-theme="light"] .mapview .wx-legend .ends,
+:root[data-theme="light"] .mapview .wx-legend .note, :root[data-theme="light"] .mapview .wx-time, :root[data-theme="light"] .sdrawer h3, :root[data-theme="light"] .sd-kicker { color: var(--ink-2); }
+:root[data-theme="light"] .mapview .tb { background: #fff; color: var(--ink); border-color: var(--line); }
+:root[data-theme="light"] .mapview .chip, :root[data-theme="light"] .mapview .seg { color: var(--ink); border-color: var(--line); }
+:root[data-theme="light"] .mapview .chip[aria-pressed="true"], :root[data-theme="light"] .mapview .seg[aria-pressed="true"] { background: var(--ink); color: #fff; }
+:root[data-theme="light"] .viewseg { border-color: var(--line); } :root[data-theme="light"] .timebar output .fc { color: #b8741c; }
+:root[data-theme="light"] .sdrawer .btn.ghost { color: var(--accent); border-color: var(--accent); } :root[data-theme="light"] .sdrawer .linkish { color: var(--accent); }
+:root[data-theme="light"] .wx-info .tc-grid { color: var(--ink); } :root[data-theme="light"] .wx-info .tc-grid .rl, :root[data-theme="light"] .wx-info .tc-grid small, :root[data-theme="light"] .wx-info .tc-note { color: var(--ink-2); }
+:root[data-theme="light"] .wx3d-label { background: rgba(255, 255, 255, .9); color: var(--ink); border-left-color: var(--ink); }
+/* storm rows in Today's narrower column: name and wind on top, then the description, then the buttons */
+.today-grid .rows .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name wind" "where where" "act act"; row-gap: .5rem; }
+.today-grid .rows .row .r-name { grid-area: name; } .today-grid .rows .row .r-wind { grid-area: wind; text-align: right; }
+.today-grid .rows .row .r-where { grid-area: where; } .today-grid .rows .row .r-act { grid-area: act; justify-content: flex-start; }

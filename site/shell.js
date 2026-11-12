@@ -96,6 +96,23 @@
         el("div", { class: "r-act" }, [btn(t("btn.map"), async () => { show("map"); await initMap(); focusMap(s.lon, s.lat); stormPanel(s.key); }), btn(t("btn.analysis"), () => openStorm(s.key), "ghost")])]));
     }
   }
+  function glance() {
+    const ul = $("#t-glance"); if (!ul) return; ul.textContent = "";
+    const named = ACTIVE.filter((x) => !x.invest), top = named.slice().sort((a, b) => b.vmax_kt - a.vmax_kt)[0], c = (CLIMO && CLIMO.climate) || {};
+    const item = (k, v, cls = "") => ul.append(el("li", { class: cls }, [el("span", { text: k }), el("b", { text: v })]));
+    item(t("gl.storms"), String(named.length)); if (top) item(t("gl.strongest"), `${top.name}, ${Math.round(top.vmax_kt * KMH)} ${t("unit.kmh")}`, "wide");
+    if (c.enso) item("ENSO", `${c.enso.phase} (${c.enso.value > 0 ? "+" : ""}${c.enso.value})`); if (c.mjo) item("MJO", c.mjo.active ? t("gl.phase", { n: c.mjo.phase }) : t("gl.weak"));
+  }
+  let wxMini = null;
+  async function miniGlobe() {
+    if (wxMini || !window.WxMap || !$("#t-globe")) return;
+    wxMini = window.WxMap.create($("#t-globe"), { onPick: () => show("map"), onStorm: async (k) => { show("map"); await initMap(); stormPanel(k); } });
+    try {
+      await wxMini.load("data/wx/"); const lv = wxMini.levels(); if (lv.includes(1000)) await wxMini.set("level", 1000);
+      wxMini.set("contours", false); wxMini.set("labels", false); wxMini.setStorms(stormList());
+      const top = ACTIVE.slice().sort((a, b) => b.vmax_kt - a.vmax_kt)[0]; wxMini.focus(top ? top.lon : 82, top ? top.lat : 12, 1.0);
+    } catch (e) { $("#t-globe").closest("figure").hidden = true; }
+  }
   const article = (w) => (/^[aeiou]/i.test(w) ? "an" : "a");
   const capital = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
   const btn = (text, fn, cls = "") => { const b = el("button", { type: "button", class: `btn ${cls}`.trim(), text }); b.addEventListener("click", fn); return b; };
@@ -384,7 +401,7 @@
   // ---------------------------------------------------------------- navigation
   const VIEWS = { today: "today", map: "map", storms: "analysis", learn: "learn" };
   function show(v) {
-    document.body.dataset.view = v;
+    document.body.dataset.view = v; if (wxMini) wxMini.pause(v !== "today");
     for (const s of $$(".view")) s.hidden = s.id !== `view-${v}`;
     for (const a of $$(".views a")) a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false");
     if (v === "map") { initMap().then(() => setMode(MODE)); } else { if (wx) wx.pause(true); if (wx3) wx3.pause(true); }
@@ -403,7 +420,10 @@
   $$(".views a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); show(a.dataset.view); }));
   $("#brand").addEventListener("click", (e) => { e.preventDefault(); show("today"); });
   $$("[data-goto]").forEach((b) => b.addEventListener("click", async () => {
-    show("map"); await initMap(); if (!wx) return; const g = b.dataset.goto; if (g !== "sst") setMode("2d");
+    const g = b.dataset.goto;
+    if (g === "game") { show("learn"); setTimeout(() => $("#l-game").scrollIntoView({ behavior: "smooth" }), 60); return; }
+    show("map"); await initMap(); if (!wx) return; if (g !== "sst") setMode("2d");
+    if (g === "ocean") { const c = $('.chip[data-ov="ocean"]'); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); const f = $('input[name="flow"][value="currents"]'); if (f) { f.checked = true; f.dispatchEvent(new Event("change")); } both((m) => m.focus(-40, 20, 1)); return; }
     const press = (ov) => { const c = $(`.chip[data-ov="${ov}"]`); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); };
     if (g === "cells") { press("cells"); const i = wx.levels().indexOf(1000); if (i >= 0) { $("#lv").value = i; $("#lv").dispatchEvent(new Event("input")); } setScalar("pwat"); both((m) => m.focus(30, 5, 1)); }
     if (g === "walker") { press("walker"); both((m) => m.focus(-160, 0, 1.2)); }
@@ -411,6 +431,12 @@
     if (g === "sst") { setScalar("sst"); both((m) => m.focus(88, 12, 1.3)); }
   }));
   function setScalar(v) { const r = $(`input[name="scalar"][value="${v}"]`); if (r) { r.checked = true; r.dispatchEvent(new Event("change")); } }
+
+  $("#go-place").addEventListener("click", (e) => { e.preventDefault(); $("#place-h").scrollIntoView({ behavior: "smooth", block: "center" }); $("#city").focus({ preventScroll: true }); });
+  $("#go-map").addEventListener("click", (e) => { e.preventDefault(); show("map"); });
+  $("#go-guide").addEventListener("click", () => window.TCGuide && window.TCGuide.open());
+  // light and dark: the maps redraw with the new palette
+  new MutationObserver(() => { if (wx) wx.theme(); if (wxMini) wxMini.theme(); legend(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   // ---------------------------------------------------------------- language
   const langSel = $("#lang");
@@ -425,14 +451,21 @@
   diagrams(); route();
   getJSON("data/storms.json").then((d) => {
     DATA = d; ACTIVE = (d.storms || []).filter((s) => s.status === "active" && s.track && s.track.length);
-    today();
+    today(); glance(); miniGlobe();
     try { const p = JSON.parse(localStorage.getItem("tc-place") || "null"); if (p) { assess(p); const o = [...city.options].find((x) => x.value.endsWith(`,${p.name}`)); if (o) city.value = o.value; } } catch (e) { /* ignore */ }
     both((m) => m.setStorms(stormList()));
   }).catch(() => { $("#t-headline").textContent = "The storm list could not be loaded. It is created by the site's regular update."; });
   getJSON("data/climo.json").then((d) => {
-    CLIMO = d; if (wx && d.climate) wx.setClimate(d.climate);
+    CLIMO = d; if (wx && d.climate) wx.setClimate(d.climate); glance();
     const e = d.climate && d.climate.enso, n = $("#l-enso-now");
     if (e) { n.hidden = false; n.textContent = `Right now: ${e.phase} (Niño 3.4 index ${e.value > 0 ? "+" : ""}${e.value} °C, ${e.season}).`; }
   }).catch(() => {});
-  window.TCShell = { show };
+  window.TCShell = {
+    show, openStorm, stormPanel, initMap, setScalar, place: () => LAST_PLACE,
+    data: () => ({ ACTIVE, CLIMO, DATA, TOWNS }), where, motion, className,
+    goto: (g) => { const b = document.querySelector(`[data-goto="${g}"]`); if (b) b.click(); },
+    flow: async (v) => { await initMap(); const f = $(`input[name="flow"][value="${v}"]`); if (f) { f.checked = true; f.dispatchEvent(new Event("change")); } },
+    overlay: async (ov) => { await initMap(); const c = $(`.chip[data-ov="${ov}"]`); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); },
+    focus: async (lon, lat, k) => { await initMap(); both((m) => m.focus(lon, lat, k || 1.8)); },
+  };
 })();

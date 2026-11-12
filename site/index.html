@@ -44,12 +44,25 @@
 <main id="main">
 <!-- ======================= TODAY ======================= -->
 <section id="view-today" class="view today" aria-labelledby="t-headline">
-  <div class="today-top">
-    <div class="today-lede">
+  <div class="hero">
+    <div class="hero-text">
+      <p class="hero-kicker"><span class="live-dot" aria-hidden="true"></span><span id="t-updated"></span></p>
       <h1 id="t-headline">Checking today's tropical cyclones…</h1>
       <p id="t-sub" class="lede"></p>
-      <p class="updated" id="t-updated"></p>
+      <div class="hero-actions">
+        <a class="btn" href="#place-h" id="go-place" data-i18n="hero.place">Check my town</a>
+        <a class="btn ghost" href="#map" id="go-map" data-i18n="hero.map">Explore the live map</a>
+        <button type="button" class="btn ghost" id="go-guide" data-i18n="hero.guide">Ask the guide</button>
+      </div>
+      <ul class="glance" id="t-glance" aria-label="At a glance"></ul>
     </div>
+    <figure class="hero-globe">
+      <div id="t-globe" class="t-globe" role="img" aria-label="Live winds near the surface and today's storms"></div>
+      <figcaption data-i18n="hero.cap">Live winds near the surface. Drag to turn, select to open the live map.</figcaption>
+    </figure>
+  </div>
+
+  <div class="today-grid">
     <section class="place" aria-labelledby="place-h">
       <h2 id="place-h" data-i18n="place.h">Is a cyclone heading for you?</h2>
       <p class="muted" data-i18n="place.p">Choose your town, or let your browser find you. Your place is kept only on this device.</p>
@@ -61,24 +74,33 @@
       <div id="place-result" class="place-result" aria-live="polite"></div>
       <div id="towncast" class="towncast" hidden></div>
     </section>
+    <section class="storms-today" aria-labelledby="st-h">
+      <h2 id="st-h" data-i18n="st.h">Storms right now</h2>
+      <ol id="t-storms" class="rows"></ol>
+    </section>
   </div>
 
-  <section class="storms-today" aria-labelledby="st-h">
-    <h2 id="st-h" data-i18n="st.h">Storms right now</h2>
-    <ol id="t-storms" class="rows"></ol>
+  <section class="teasers" aria-labelledby="tz-h">
+    <h2 id="tz-h" data-i18n="tz.h">Understand what you see</h2>
+    <div class="tz-grid">
+      <button type="button" class="tz" data-goto="cells"><span class="tz-art cells"></span><b data-i18n="tz.1">Why do the trade winds blow?</b><span data-i18n="tz.1s">The three circulation cells, on today's map</span></button>
+      <button type="button" class="tz" data-goto="sst"><span class="tz-art sst"></span><b data-i18n="tz.2">What fuels a cyclone?</b><span data-i18n="tz.2s">Warm sea: see where it is above 26.5 °C</span></button>
+      <button type="button" class="tz" data-goto="ocean"><span class="tz-art ocean"></span><b data-i18n="tz.3">How does the ocean move heat?</b><span data-i18n="tz.3s">Gyres and currents, from the Gulf Stream to the Agulhas</span></button>
+      <button type="button" class="tz" data-goto="game"><span class="tz-art game"></span><b data-i18n="tz.4">Could a cyclone form here?</b><span data-i18n="tz.4s">Play with the ingredients and watch a storm grow</span></button>
+    </div>
   </section>
 
   <section class="prepare" aria-labelledby="pr-h">
     <h2 id="pr-h" data-i18n="pr.h">Be ready</h2>
     <p class="muted" data-i18n="pr.p">General guidance. Always follow your national weather service and local authorities.</p>
     <div class="prep-cols">
-      <div><h3 data-i18n="pr.h1">When a cyclone may come</h3>
+      <div class="pcard"><span class="pic before"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="14" width="30" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M17 14v-4h14v4M9 23h30" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="24" cy="30" r="3" fill="currentColor"/></svg></span><h3 data-i18n="pr.h1">When a cyclone may come</h3>
         <ul><li data-i18n="pr.1a">Follow official bulletins on radio, TV or your weather service's app.</li><li data-i18n="pr.1b">Keep drinking water, food, medicines, a torch, a power bank and copies of documents ready for three days.</li>
             <li data-i18n="pr.1c">Know your nearest cyclone shelter and the safest route to it.</li><li data-i18n="pr.1d">Tie down or bring in loose objects that strong wind can throw.</li></ul></div>
-      <div><h3 data-i18n="pr.h2">When a warning is issued</h3>
+      <div class="pcard"><span class="pic warn"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7 43 40H5z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M24 19v10" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="24" cy="34" r="1.8" fill="currentColor"/></svg></span><h3 data-i18n="pr.h2">When a warning is issued</h3>
         <ul><li data-i18n="pr.2a">Move to a shelter or strong building early if you live near the sea, in a low area or in a weak house.</li><li data-i18n="pr.2b">Fishers: do not go to sea, and return to harbour.</li>
             <li data-i18n="pr.2c">Stay indoors, away from windows. A sudden calm can be the eye: the wind will return from the other side.</li><li data-i18n="pr.2d">Switch off electricity and gas if water may enter.</li></ul></div>
-      <div><h3 data-i18n="pr.h3">After it passes</h3>
+      <div class="pcard"><span class="pic after"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 26 20 35 38 14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3 data-i18n="pr.h3">After it passes</h3>
         <ul><li data-i18n="pr.3a">Wait for the all-clear before going out.</li><li data-i18n="pr.3b">Keep away from fallen power lines, floodwater and damaged buildings.</li>
             <li data-i18n="pr.3c">Drink only boiled or treated water.</li><li data-i18n="pr.3d">Check on elderly neighbours and people living alone.</li></ul></div>
     </div>
@@ -333,6 +355,7 @@
         by the other two; at the surface it gives the westerlies. The <strong>polar cell</strong> sinks cold air over the poles.</p>
       <p>Most tropical cyclones form on the equator side of the subtropical highs, in the moist air of the Hadley cell, and are steered by the winds around those highs.</p>
       <button type="button" class="btn" data-goto="cells">Show the cells on the live map</button>
+      <div class="quiz" data-quiz="cells"></div>
     </section>
 
     <section id="l-walker" aria-labelledby="l2">
@@ -348,6 +371,7 @@
       <p id="l-enso-now" class="now-note" hidden></p>
       <button type="button" class="btn" data-goto="walker">Show the Walker circulation</button>
       <button type="button" class="btn ghost" data-goto="nino">Show the Niño 3.4 and dipole regions</button>
+      <div class="quiz" data-quiz="walker"></div>
     </section>
 
     <section id="l-tc" aria-labelledby="l3">
@@ -362,9 +386,34 @@
       <p>When these come together, warm moist air rises in thunderstorms, the pressure falls, the winds speed up and draw in more moist air. In the strongest storms
         an eye forms: a calm, clear centre surrounded by the eyewall, where the winds are fiercest.</p>
       <button type="button" class="btn" data-goto="sst">Show sea surface temperature</button>
+      <div class="quiz" data-quiz="tc"></div>
+    </section>
+
+    <section id="l-game" aria-labelledby="lg-h">
+      <h2 id="lg-h">Could a cyclone form here? Try it</h2>
+      <p>Move the sliders and watch what happens. These are the conditions forecasters check every day.</p>
+      <div class="game">
+        <div class="g-controls">
+          <label>Sea temperature <output id="g-sst-o"></output><input type="range" id="g-sst" min="20" max="32" step="0.5" value="27"></label>
+          <label>Humidity in the middle of the atmosphere <output id="g-rh-o"></output><input type="range" id="g-rh" min="10" max="100" step="5" value="65"></label>
+          <label>Vertical wind shear <output id="g-sh-o"></output><input type="range" id="g-sh" min="0" max="40" step="1" value="12"></label>
+          <label>Distance from the equator <output id="g-lat-o"></output><input type="range" id="g-lat" min="0" max="35" step="1" value="12"></label>
+          <p class="g-presets">Try a real setting:
+            <button type="button" class="chip-l" data-preset="bob">Bay of Bengal, October</button>
+            <button type="button" class="chip-l" data-preset="arab">Arabian Sea, monsoon</button>
+            <button type="button" class="chip-l" data-preset="eq">On the equator</button>
+            <button type="button" class="chip-l" data-preset="cold">Cool sea</button></p>
+        </div>
+        <div class="g-stage" aria-live="polite">
+          <svg viewBox="0 0 300 220" id="g-art" role="img" aria-label="A storm that grows or falls apart with the conditions"></svg>
+          <p class="g-verdict" id="g-verdict"></p>
+          <ul class="g-why" id="g-why"></ul>
+        </div>
+      </div>
     </section>
 
     <section id="l-scale" aria-labelledby="l4">
+      <div class="quiz" data-quiz="scale" hidden></div>
       <h2 id="l4" data-i18n="learn.h4">How strong is it?</h2>
       <p>Different agencies average the wind over different times, so their numbers differ slightly. In the North Indian Ocean, the India Meteorological Department uses these classes (3-minute winds):</p>
       <table class="scale">
@@ -494,6 +543,14 @@
   </div>
 </dialog>
 
+<button type="button" class="guide-fab" id="guide-fab" aria-expanded="false" aria-controls="guide"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6z" fill="currentColor"/></svg><span data-i18n="gd.fab">Ask the guide</span></button>
+<section class="guide" id="guide" hidden aria-labelledby="guide-h">
+  <header><h2 id="guide-h" data-i18n="gd.h">Guide</h2><button type="button" class="tb close" id="guide-x" aria-label="Close">×</button></header>
+  <div class="g-log" id="g-log" aria-live="polite"></div>
+  <div class="g-sugg" id="g-sugg"></div>
+  <form class="g-ask" id="g-ask"><label class="sr" for="g-q">Ask a question</label><input id="g-q" autocomplete="off" placeholder="Ask about storms, winds, oceans…" data-i18n-ph="gd.ph"><button class="btn" type="submit" data-i18n="gd.send">Ask</button></form>
+</section>
+<div class="tour" id="tour" hidden><div class="tour-spot" id="tour-spot"></div><div class="tour-tip" id="tour-tip" role="dialog" aria-live="polite"></div></div>
 <noscript><p class="banner">This site needs JavaScript.</p></noscript>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/d3.min.js"></script>
@@ -509,5 +566,6 @@
 <script src="wxmap.js?v=__BUILD__"></script>
 <script src="wx3d.js?v=__BUILD__"></script>
 <script src="shell.js?v=__BUILD__"></script>
+<script src="guide.js?v=__BUILD__"></script>
 </body>
 </html>
