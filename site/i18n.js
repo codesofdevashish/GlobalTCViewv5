@@ -50,6 +50,9 @@
     "rn.none": "dry or very light", "rn.light": "light", "rn.mod": "moderate", "rn.heavy": "heavy", "rn.vheavy": "very heavy", "rn.xheavy": "extremely heavy",
     "sea.calm": "calm or smooth", "sea.slight": "slight", "sea.mod": "moderate", "sea.rough": "rough", "sea.vrough": "very rough", "sea.high": "high", "sea.vhigh": "very high",
     "unit.kmh": "km/h",
+    "sd.fc": "Where it is forecast to be (GEFS ensemble mean)", "sd.towns": "Coastal towns it may come closest to", "sd.closest": "closest about {d}, in about {n} day(s)",
+    "sd.ri": "Chance of rapid strengthening in the next 24 hours:", "sd.typical": "typical storm: {p}%", "sd.hidefc": "Hide forecast tracks", "sd.showfc": "Show forecast tracks",
+    "sd.centre": "Centre on it", "tc.none": "No forecast for this town yet.", "tc.mine": "Make this my town",
   };
   const HI = {
     // navigation and static text
@@ -115,6 +118,9 @@
     "rn.none": "सूखा या बहुत हल्की", "rn.light": "हल्की", "rn.mod": "मध्यम", "rn.heavy": "भारी", "rn.vheavy": "बहुत भारी", "rn.xheavy": "अत्यंत भारी",
     "sea.calm": "शांत", "sea.slight": "हल्की लहरें", "sea.mod": "मध्यम", "sea.rough": "उग्र", "sea.vrough": "बहुत उग्र", "sea.high": "ऊँची लहरें", "sea.vhigh": "बहुत ऊँची लहरें",
     "unit.kmh": "किमी/घंटा",
+    "ly.towns": "तटीय शहर: 5 दिन का पूर्वानुमान", "ly.labels": "जगहों के नाम", "sd.fc": "पूर्वानुमानित स्थिति (GEFS समूह औसत)", "sd.towns": "तटीय शहर जिनके यह सबसे पास आ सकता है", "sd.closest": "लगभग {d} तक पास, लगभग {n} दिन में",
+    "sd.ri": "अगले 24 घंटों में तेज़ी से शक्तिशाली होने की संभावना:", "sd.typical": "सामान्य तूफ़ान: {p}%", "sd.hidefc": "पूर्वानुमान ट्रैक छिपाएँ", "sd.showfc": "पूर्वानुमान ट्रैक दिखाएँ",
+    "sd.centre": "इस पर केंद्रित करें", "tc.none": "इस शहर का पूर्वानुमान अभी उपलब्ध नहीं है।", "tc.mine": "इसे मेरा शहर बनाएँ",
         "v.3d": "3D ग्लोब", "v.2d": "सपाट मानचित्र", "v.stack": "सभी ऊँचाइयाँ एक साथ (3D भंवर)", "v.2donly": "परिसंचरण परतें सपाट मानचित्र पर दिखाई जाती हैं।",
     "dir16.north": "उत्तर", "dir16.north-northeast": "उत्तर-उत्तरपूर्व", "dir16.northeast": "उत्तर-पूर्व", "dir16.east-northeast": "पूर्व-उत्तरपूर्व", "dir16.east": "पूर्व",
     "dir16.east-southeast": "पूर्व-दक्षिणपूर्व", "dir16.southeast": "दक्षिण-पूर्व", "dir16.south-southeast": "दक्षिण-दक्षिणपूर्व", "dir16.south": "दक्षिण", "dir16.south-southwest": "दक्षिण-दक्षिणपश्चिम",

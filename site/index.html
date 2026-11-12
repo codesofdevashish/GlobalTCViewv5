@@ -108,6 +108,8 @@
     <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
     <label class="tgl"><input type="checkbox" id="ly-cont" checked> <span id="ly-cont-label">Pressure: isobars, highs and lows</span></label>
     <label class="tgl"><input type="checkbox" id="ly-storms" checked> <span data-i18n="ly.storms">Tropical cyclones</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-labels" checked> <span data-i18n="ly.labels">Place names</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-towns"> <span data-i18n="ly.towns">Coastal towns: 5-day forecast</span></label>
     <h3 data-i18n="ly.colour">Colour the map by</h3>
     <label class="opt"><input type="radio" name="scalar" value="speed" checked> <span data-i18n="ly.speed">Wind speed</span></label>
     <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
@@ -139,6 +141,7 @@
   <div class="wx-zoom"><button type="button" class="tb" id="wz-in" aria-label="Zoom in">+</button><button type="button" class="tb" id="wz-out" aria-label="Zoom out">−</button></div>
   <section class="wx-info" id="wx-info" hidden aria-live="polite"><button type="button" class="tb close" id="wx-info-x" aria-label="Close">×</button><div id="wx-info-body"></div></section>
   <p class="wx-time" id="wx-time"></p>
+  <aside class="sdrawer" id="sd" hidden aria-labelledby="sd-name"><button type="button" class="tb close" id="sd-x" aria-label="Close">×</button><div id="sd-body"></div></aside>
 </section>
 
 <!-- ======================= STORM ANALYSIS (research dashboard) ======================= -->

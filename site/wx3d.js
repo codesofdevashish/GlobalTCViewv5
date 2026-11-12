@@ -22,7 +22,7 @@
 
     // ---- Earth, atmosphere rim, colour layer
     const earthMat = new T.MeshBasicMaterial({ color: 0x8c9aa4 });
-    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { earthMat.map = t; earthMat.needsUpdate = true; });
+    new T.TextureLoader().load("vendor/earth/day.jpg", (t) => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.encoding = T.sRGBEncoding || t.encoding; earthMat.map = t; earthMat.needsUpdate = true; });
     const earth = new T.Mesh(new T.SphereGeometry(1, 128, 96), earthMat); earth.rotation.y = -Math.PI / 2; globe.add(earth);
     scene.add(new T.Mesh(new T.SphereGeometry(1.06, 64, 48), new T.ShaderMaterial({ side: T.BackSide, transparent: true, depthWrite: false, blending: T.AdditiveBlending,
       vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
@@ -129,16 +129,65 @@
       }
     }
 
+    // ---- crisp vector coastlines over the Earth image
+    window.WxMap.landSet("50m").then((L) => {
+      if (!L) return; const pts = [];
+      for (const line of L.coast.coordinates) for (let i = 1; i < line.length; i++) pts.push(...ll2v(line[i - 1][1], line[i - 1][0], 1.0012), ...ll2v(line[i][1], line[i][0], 1.0012));
+      const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pts, 3));
+      globe.add(new T.LineSegments(g, new T.LineBasicMaterial({ color: 0xe8f0f4, transparent: true, opacity: 0.7, depthWrite: false })));
+    });
+    // ---- place names: most important first, no overlaps, hidden on the far side
+    const lab = Object.assign(document.createElement("canvas"), { className: "wx3d-places" }); el.insertBefore(lab, labels);
+    const lctx = lab.getContext("2d"); let placeList = []; window.WxMap.places().then((p) => { placeList = p; });
+    const pv = new T.Vector3(), camDir = new T.Vector3();
+    function drawPlaces() {
+      const w = el.clientWidth, h = el.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (lab.width !== Math.round(w * dpr) || lab.height !== Math.round(h * dpr)) { lab.width = Math.round(w * dpr); lab.height = Math.round(h * dpr); lab.style.width = `${w}px`; lab.style.height = `${h}px`; }
+      lctx.setTransform(dpr, 0, 0, dpr, 0, 0); lctx.clearRect(0, 0, w, h); if (!placeList.length || st.labels === false) return;
+      const d = camera.position.z, rpx = (h / 2) * Math.tan(Math.asin(Math.min(0.999, 1 / d))) / Math.tan(camera.fov * D / 2);
+      const z = Math.log2(2 * Math.PI * rpx / 256) + 0.9, boxes = []; let n = 0;
+      camDir.copy(camera.position).normalize();
+      for (const p of placeList) {
+        if (p[3] > z) break;
+        pv.set(...ll2v(p[1], p[2], 1.0015)); globe.localToWorld(pv);
+        if (pv.clone().normalize().dot(camDir) < 0.18) continue;
+        pv.project(camera); const x = (pv.x * 0.5 + 0.5) * w, y = (-pv.y * 0.5 + 0.5) * h; if (x < 0 || y < 0 || x > w || y > h) continue;
+        const name = window.WxMap.placeName(p), big = p[3] <= 3;
+        lctx.font = `${big ? 600 : 500} ${big ? 13 : 12}px "IBM Plex Sans Condensed", "Arial Narrow", sans-serif`;
+        const tw = lctx.measureText(name).width + 8, b = [x - 3, y - 8, x + tw, y + 8];
+        if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue; boxes.push(b);
+        lctx.beginPath(); lctx.arc(x, y, big ? 2.6 : 2, 0, 2 * Math.PI); lctx.fillStyle = "#fff"; lctx.fill();
+        lctx.lineJoin = "round"; lctx.lineWidth = 3; lctx.strokeStyle = "rgba(6,22,34,.85)"; lctx.textBaseline = "middle";
+        lctx.strokeText(name, x + 5, y); lctx.fillStyle = big ? "#fff" : "#d7e3ea"; lctx.fillText(name, x + 5, y);
+        if (++n >= 220) break;
+      }
+    }
+
+    // ---- forecast tracks (members thin, ensemble mean dashed) just above the sea surface
+    let fcObj = null;
+    function setForecast(fc) {
+      if (fcObj) { globe.remove(fcObj); fcObj.traverse((o) => o.geometry && o.geometry.dispose()); fcObj = null; }
+      if (!fc) return; fcObj = new T.Group();
+      const seg = (tr) => { const pts = []; for (let i = 1; i < tr.length; i++) pts.push(...ll2v(tr[i - 1][1], tr[i - 1][2], 1.008), ...ll2v(tr[i][1], tr[i][2], 1.008)); return pts; };
+      const mem = []; for (const m of fc.members || []) mem.push(...seg(m));
+      if (mem.length) { const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(mem, 3));
+        fcObj.add(new T.LineSegments(g, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false }))); }
+      if (fc.mean && fc.mean.length > 1) { const g = new T.BufferGeometry().setFromPoints(fc.mean.map((q) => new T.Vector3(...ll2v(q[1], q[2], 1.009))));
+        const l = new T.Line(g, new T.LineDashedMaterial({ color: 0xffd27a, dashSize: 0.012, gapSize: 0.008 })); l.computeLineDistances(); fcObj.add(l);
+        for (const q of fc.mean) if (q[0] && q[0] % 24 === 0) { const d = new T.Mesh(new T.SphereGeometry(0.006, 10, 8), new T.MeshBasicMaterial({ color: 0xffd27a })); d.position.set(...ll2v(q[1], q[2], 1.009)); fcObj.add(d); } }
+      globe.add(fcObj);
+    }
+
     // ---- interaction
     let drag = null, moved = false;
     canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; moved = false; canvas.setPointerCapture(e.pointerId); });
     canvas.addEventListener("pointermove", (e) => {
       if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
-      const k = 0.005 * dist / 3.6; globe.rotation.y += dx * k; globe.rotation.x = Math.max(-1.3, Math.min(1.3, globe.rotation.x + dy * k)); drag = { x: e.clientX, y: e.clientY };
+      const k = 0.005 * (dist - 1) / 2.6; globe.rotation.y += dx * k; globe.rotation.x = Math.max(-1.3, Math.min(1.3, globe.rotation.x + dy * k)); drag = { x: e.clientX, y: e.clientY };
     });
     canvas.addEventListener("pointerup", (e) => { if (!moved) pick(e); drag = null; });
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoom(e.deltaY < 0 ? 1 / 1.12 : 1.12); }, { passive: false });
-    const zoom = (f) => { dist = Math.max(1.35, Math.min(7, dist * f)); };
+    const zoom = (f) => { dist = Math.max(1.06, Math.min(7, 1 + (dist - 1) * f)); };
     const ray = new T.Raycaster(), ndc = new T.Vector2();
     function pick(e) {
       const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
@@ -160,13 +209,17 @@
       requestAnimationFrame(frame); if (!st.running || !el.clientWidth) return;
       camera.position.z += (dist - camera.position.z) * 0.15;
       if (!drag) stepSystems();
+      const ms = Math.max(0.006, Math.min(0.035, 0.035 * (camera.position.z - 1) / 2.6));     // markers keep their size on screen
+      for (const o of stormObjs) o.obj.scale.set(ms, ms, 1);
       for (const o of stormObjs) {                                    // labels follow their storms
         o.obj.getWorldPosition(v3); const facing = v3.clone().normalize().dot(camera.position.clone().normalize()); v3.project(camera);
         o.lab.style.display = facing > 0.2 ? "" : "none";
         o.lab.style.transform = `translate(${(v3.x * 0.5 + 0.5) * el.clientWidth + 10}px, ${(-v3.y * 0.5 + 0.5) * el.clientHeight - 12}px)`;
       }
       renderer.render(scene, camera);
+      if ((frameNo = (frameNo + 1) % 2) === 0 || drag) drawPlaces();
     }
+    let frameNo = 0;
     requestAnimationFrame(frame);
 
     async function refresh() {
@@ -176,8 +229,8 @@
     }
     return {
       refresh, focus, zoomIn: () => zoom(1 / 1.3), zoomOut: () => zoom(1.3), pause(p) { st.running = !p; }, redraw: resize,
-      async set(k, v) { st[k] = v; if (k === "storms") return buildStorms(); if (k === "contours") return buildContours(); if (k === "scalar") return paintOverlay(); await refresh(); },
-      setStorms(list) { st.storms_ = list; buildStorms(); }, get: (k) => st[k],
+      async set(k, v) { st[k] = v; if (k === "labels") return; if (k === "storms") return buildStorms(); if (k === "contours") return buildContours(); if (k === "scalar") return paintOverlay(); await refresh(); },
+      setStorms(list) { st.storms_ = list; buildStorms(); }, get: (k) => st[k], setForecast, select() {}, setTowns() {},
     };
   }
   window.Wx3D = { create, ALT_KM };

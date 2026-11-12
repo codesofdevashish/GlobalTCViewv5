@@ -93,7 +93,7 @@
         el("div", { class: "r-name" }, [el("h3", { text: s.name }), el("p", { text: `${className(s, s.vmax_kt)}${s.invest ? t("row.invest") : ""}` })]),
         el("p", { class: "r-wind" }, [el("strong", { text: Math.round(s.vmax_kt * KMH) }), el("span", { text: ` ${t("row.winds")}` })]),
         el("p", { class: "r-where", text: `${capital(wh)}${stop()} ${mv ? capital(mv) + sw + stop() : ""}` }),
-        el("div", { class: "r-act" }, [btn(t("btn.map"), () => { show("map"); setTimeout(() => focusMap(s.lon, s.lat), 80); }), btn(t("btn.analysis"), () => openStorm(s.key), "ghost")])]));
+        el("div", { class: "r-act" }, [btn(t("btn.map"), async () => { show("map"); await initMap(); focusMap(s.lon, s.lat); stormPanel(s.key); }), btn(t("btn.analysis"), () => openStorm(s.key), "ghost")])]));
     }
   }
   const article = (w) => (/^[aeiou]/i.test(w) ? "an" : "a");
@@ -140,13 +140,16 @@
   let TOWNCAST = null;
   const IMD_RAIN = [[2.5, "rn.none"], [15.6, "rn.light"], [64.5, "rn.mod"], [115.6, "rn.heavy"], [204.5, "rn.vheavy"], [1e9, "rn.xheavy"]];
   const SEA = [[0.5, "sea.calm"], [1.25, "sea.slight"], [2.5, "sea.mod"], [4, "sea.rough"], [6, "sea.vrough"], [9, "sea.high"], [99, "sea.vhigh"]];
+  async function loadTowncast() { if (!TOWNCAST) { try { TOWNCAST = await getJSON("data/towns.json"); } catch (e) { return null; } } return TOWNCAST; }
   async function towncast(p) {
     const box = $("#towncast"); box.hidden = true; box.textContent = "";
-    if (!TOWNCAST) { try { TOWNCAST = await getJSON("data/towns.json"); } catch (e) { return; } }
+    if (!(await loadTowncast())) return;
     let name = TOWNCAST.towns[p.name] ? p.name : null, dist = 0;
     if (!name) { const n = nearestTown(p.lon, p.lat); if (n && n.d <= 150) { name = n.t[0]; dist = n.d; } }
-    const f = name && TOWNCAST.towns[name]; if (!f) return;
-    box.hidden = false;
+    if (renderTowncast(box, name, dist)) box.hidden = false;
+  }
+  function renderTowncast(box, name, dist = 0) {
+    const f = name && TOWNCAST && TOWNCAST.towns[name]; if (!f) return false;
     box.append(el("h3", { text: t("tc.h", { town: name }) }));
     const g = el("div", { class: "tc-grid" }); g.append(el("div", { class: "hd" }));
     for (const d of TOWNCAST.days) { const x = new Date(toMs(d)); g.append(el("div", { class: "hd", text: `${x.getUTCDate()} ${MON[x.getUTCMonth()]}` })); }
@@ -158,6 +161,7 @@
     row(t("tc.boats"), f.wave.map((v, i) => { const bad = (v != null && v >= 2.5) || f.wind[i] >= 45;
       return el("div", { class: bad ? "bad" : "" }, [el("small", { text: t(bad ? "tc.nogo" : "tc.ok") })]); }));
     box.append(g, el("p", { class: "tc-note", text: t("tc.note", { d: dist ? `${Math.round(dist)} km` : "" }) + (f.wave_km ? ` ${t("tc.wavept", { km: f.wave_km })}` : "") }));
+    return true;
   }
   let LAST_PLACE = null;
 
@@ -171,13 +175,13 @@
     mapReady = (async () => {
       if (!window.WxMap) return;
       $("#wx").hidden = false;                                     // the flat map holds the data; build it visible once, then hide it
-      wx = window.WxMap.create($("#wx"), { onPick: info, onStorm: (k) => openStorm(k) });
+      wx = window.WxMap.create($("#wx"), { onPick: info, onStorm: (k) => stormPanel(k), onTown: townPopup });
       try {
         const meta = await wx.load("data/wx/");
         const sl = $("#lv"); sl.max = meta.levels.length - 1; sl.value = Math.max(0, meta.levels.indexOf(850));
         const tm = $("#tm"), times = meta.times || []; tm.max = Math.max(0, times.length - 1); tm.value = meta.now || 0; $(".timebar").hidden = times.length < 2; timeLabel();
         $("#wx-time").textContent = t("map.time", { t: when(toMs(meta.cycle)) });
-        if (window.Wx3D) wx3 = window.Wx3D.create($("#wx3d"), wx, { onPick: info, onStorm: (k) => openStorm(k) });
+        if (window.Wx3D) wx3 = window.Wx3D.create($("#wx3d"), wx, { onPick: info, onStorm: (k) => stormPanel(k) });
         if (wx3) { await wx3.set("level", meta.levels[+sl.value]); } else { MODE = "2d"; $(".viewseg").hidden = true; $("#stack-row").hidden = true; }
       } catch (e) { $("#wx-time").textContent = t("map.notyet"); MODE = "2d"; }
       both((m) => m.setStorms(stormList())); if (CLIMO && CLIMO.climate) wx.setClimate(CLIMO.climate);
@@ -187,6 +191,57 @@
     })();
     return mapReady;
   }
+  let FC_ON = true, PANEL = null;
+  async function stormPanel(key) {
+    const s = ACTIVE.find((x) => x.key === key); if (!s) return openStorm(key);
+    PANEL = key; both((m) => m.select && m.select(key)); $("#wx-info").hidden = true;
+    let fc = FCS[key]; if (s.forecast && fc === undefined) { try { fc = FCS[key] = await getJSON(s.forecast); } catch (e) { fc = FCS[key] = null; } }
+    if (PANEL !== key) return;
+    both((m) => m.setForecast && m.setForecast(FC_ON && fc ? { members: Object.values(fc.members || {}), mean: fc.mean } : null));
+    const b = $("#sd-body"); b.textContent = ""; $("#sd").hidden = false; $("#sd").style.setProperty("--c", css(catVar(s.vmax_kt)));
+    const mv = motion(s), sw = strengthWord(s);
+    b.append(el("p", { class: "sd-kicker", text: `${s.basin_name}${s.invest ? t("row.invest") : ""}` }), el("h2", { id: "sd-name", text: s.name }),
+      el("p", { class: "sd-cls", text: `${className(s, s.vmax_kt)}, ${Math.round(s.vmax_kt * KMH)} ${t("unit.kmh")}` }),
+      el("p", { text: `${capital(where(s))}${stop()} ${mv ? capital(mv) + sw + stop() : ""}` }), spark(s));
+    if (fc && fc.mean) {
+      const ul = el("ul", { class: "sd-fc" });
+      for (const d of [1, 3, 5]) { const q = fc.mean.find((x) => x[0] === d * 24); if (!q) continue; const n = nearestTown(q[2], q[1]);
+        ul.append(el("li", {}, [el("b", { text: d === 1 ? t("tm.in1") : t("tm.in", { n: d }) }), ` ${Math.round(q[3] * KMH)} ${t("unit.kmh")}, ${n && n.d < 2500 ? t("where.fmt", { d: fmtKm(n.d), dir: t(`dir.${dir8(bearing([n.t[3], n.t[2]], [q[2], q[1]]))}`), town: n.t[0], country: n.t[1] }) : t("where.ocean")}`])); }
+      b.append(el("h3", { text: t("sd.fc") }), ul);
+      const near = TOWNS.map((tw) => { let best = 1e9, tau = 0; for (const q of fc.mean) { if (q[0] > 120) break; const d = km([tw[3], tw[2]], [q[2], q[1]]); if (d < best) { best = d; tau = q[0]; } } return { tw, best, tau }; })
+        .filter((x) => x.best <= 600).sort((a, b2) => a.best - b2.best).slice(0, 4);
+      if (near.length) { const ol = el("ul", { class: "sd-towns" });
+        for (const x of near) { const li = el("li", {}, [el("button", { type: "button", class: "linkish", text: x.tw[0] }), ` ${t("sd.closest", { d: fmtKm(x.best), n: Math.max(1, Math.round(x.tau / 24)) })}`]);
+          li.querySelector("button").addEventListener("click", () => townPopup(x.tw[0])); ol.append(li); }
+        b.append(el("h3", { text: t("sd.towns") }), ol); }
+    }
+    if (s.ri_guidance) b.append(el("p", { class: "sd-ri" }, [`${t("sd.ri")} `, el("strong", { text: `${Math.round(s.ri_guidance.p * 100)}%` }), ` (${t("sd.typical", { p: Math.round(s.ri_guidance.base * 100) })})`]));
+    const fcBtn = btn(FC_ON ? t("sd.hidefc") : t("sd.showfc"), () => { FC_ON = !FC_ON; stormPanel(key); }, "ghost");
+    b.append(el("div", { class: "sd-act" }, [btn(t("sd.centre"), () => both((m) => m.focus(s.lon, s.lat, 2.4)), "ghost"), fc ? fcBtn : null, btn(t("btn.analysis"), () => openStorm(s.key))]));
+  }
+  function spark(s) {                                         // small intensity history in km/h
+    const P = (s.track || []).map((r) => [toMs(r[0]), r[3] * KMH]); if (P.length < 2) return el("span");
+    const W_ = 300, H_ = 64, t0 = P[0][0], t1 = P[P.length - 1][0], hi = Math.max(120, ...P.map((p) => p[1]));
+    const X = (x) => 4 + (W_ - 8) * (x - t0) / Math.max(1, t1 - t0), Y = (v) => H_ - 4 - (H_ - 8) * v / hi;
+    const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"); svg.setAttribute("viewBox", `0 0 ${W_} ${H_}`); svg.setAttribute("class", "sd-spark");
+    svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Wind speed over the storm's life");
+    for (let i = 1; i < P.length; i++) { const l = document.createElementNS(ns, "line");
+      for (const [k, v] of Object.entries({ x1: X(P[i - 1][0]), y1: Y(P[i - 1][1]), x2: X(P[i][0]), y2: Y(P[i][1]), stroke: css(catVar(s.track[i][3])) || "#fff", "stroke-width": 3, "stroke-linecap": "round" })) l.setAttribute(k, v);
+      svg.append(l); }
+    return svg;
+  }
+  async function townPopup(name) {
+    await loadTowncast(); const b = $("#wx-info-body"); b.textContent = ""; $("#wx-info").hidden = false;
+    if (!renderTowncast(b, name)) { b.append(el("p", { text: t("tc.none") })); return; }
+    const tw = TOWNS.find((x) => x[0] === name);
+    if (tw) b.append(btn(t("tc.mine"), () => { setPlace({ lat: tw[2], lon: tw[3], name: tw[0] }); const o = [...city.options].find((x) => x.value.endsWith(`,${tw[0]}`)); if (o) city.value = o.value; show("today"); }, "ghost"));
+  }
+  $("#sd-x").addEventListener("click", () => { $("#sd").hidden = true; PANEL = null; both((m) => { if (m.setForecast) m.setForecast(null); if (m.select) m.select(null); }); });
+  $("#ly-towns").addEventListener("change", async (e) => {
+    const alerts = new Set(); for (const s of ACTIVE) { const fc = FCS[s.key]; if (fc && fc.mean) for (const tw of TOWNS) if (fc.mean.some((q) => q[0] <= 72 && km([tw[3], tw[2]], [q[2], q[1]]) <= 300)) alerts.add(tw[0]); }
+    both((m) => m.setTowns && m.setTowns(TOWNS.map((tw) => ({ name: tw[0], lat: tw[2], lon: tw[3], alert: alerts.has(tw[0]) })), e.target.checked));
+    if (e.target.checked && wx3 && MODE === "3d") setMode("2d");
+  });
   function setMode(m) {
     MODE = m === "3d" && wx3 ? "3d" : "2d";
     $("#wx").hidden = MODE !== "2d"; $("#wx3d").hidden = MODE !== "3d"; $("#stack-row").hidden = MODE !== "3d" || !wx3;
@@ -227,6 +282,7 @@
   $("#ly-wind").addEventListener("change", (e) => { both((m) => m.set("wind", e.target.checked)); legend(); });
   $("#ly-cont").addEventListener("change", (e) => { both((m) => m.set("contours", e.target.checked)); legend(); });
   $("#ly-storms").addEventListener("change", (e) => both((m) => m.set("storms", e.target.checked)));
+  $("#ly-labels").addEventListener("change", (e) => both((m) => m.set("labels", e.target.checked)));
   $$('input[name="scalar"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) { both((m) => m.set("scalar", r.value)); legend(); } }));
   $$(".chip[data-ov]").forEach((b) => b.addEventListener("click", async () => {
     await initMap(); const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on));
@@ -349,7 +405,7 @@
   if (window.I18N) {
     for (const [k, v] of Object.entries(window.I18N.LANGS)) langSel.append(el("option", { value: k, text: v }));
     langSel.value = window.I18N.lang; langSel.addEventListener("change", () => window.I18N.set(langSel.value));
-    document.addEventListener("langchange", () => { today(); if (LAST_PLACE) assess(LAST_PLACE); levelLabel(); legend(); const m = wx && wx.meta(); if (m) $("#wx-time").textContent = t("map.time", { t: when(toMs(m.cycle)) }); });
+    document.addEventListener("langchange", () => { if (wx) wx.set("labels", $("#ly-labels").checked); today(); if (LAST_PLACE) assess(LAST_PLACE); levelLabel(); legend(); const m = wx && wx.meta(); if (m) $("#wx-time").textContent = t("map.time", { t: when(toMs(m.cycle)) }); });
     window.I18N.apply();
   } else langSel.hidden = true;
 

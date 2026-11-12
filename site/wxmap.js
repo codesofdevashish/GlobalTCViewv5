@@ -30,6 +30,18 @@
     return out;
   }
 
+  let PLACES = null;
+  function places() {                                       // [name, lat, lon, min_zoom, pop, name_hi], most important first
+    if (!PLACES) PLACES = fetch("vendor/places.json").then((r) => r.json()).then((d) => d.places).catch(() => []);
+    return PLACES;
+  }
+  const placeName = (p) => (window.I18N && window.I18N.lang === "hi" && p[5] ? p[5] : p[0]);
+  const LANDS = {};
+  function landSet(res) {                                    // {land, coast} for "110m", "50m", "10m", loaded once
+    if (!LANDS[res]) LANDS[res] = fetch(`vendor/land-${res}.json`).then((r) => r.json())
+      .then((t) => ({ land: topojson.feature(t, t.objects.land), coast: topojson.mesh(t, t.objects.land) })).catch(() => null);
+    return LANDS[res];
+  }
   function create(el, opts = {}) {
     el.classList.add("wx");
     const base = Object.assign(document.createElement("canvas"), { className: "wx-base" });
@@ -37,7 +49,7 @@
     el.append(base, flow);
     const bctx = base.getContext("2d"), fctx = flow.getContext("2d");
     const st = { level: 850, wind: true, scalar: "speed", contours: true, storms: true, cells: false, walker: false, nino: false,
-                 rot: [-80, -12], k: 1, meta: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
+                 rot: [-80, -12], k: 1, meta: null, fc: null, towns: [], showTowns: false, sel: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
     let W = 0, H = 0, R = 0, dpr = 1;
     const proj = d3.geoOrthographic().clipAngle(90).precision(0.6);
     const path = d3.geoPath(proj, bctx);
@@ -135,9 +147,12 @@
     const visible = (lon, lat) => d3.geoDistance([lon, lat], [-st.rot[0], -st.rot[1]]) < Math.PI / 2 - 0.02;
 
     // ---------------------------------------------------------------- static layers
-    let land = null, coast = null;
-    const loadLand = () => fetch("vendor/land-110m.json").then((r) => r.json()).then((t) => { land = topojson.feature(t, t.objects.land); coast = topojson.mesh(t, t.objects.land); draw(); }).catch(() => {});
-    loadLand();
+    let land = null, coast = null, landRes = "", placeList = [];
+    function useLand() {                                     // sharper coastlines as you zoom in
+      const want = st.k >= 4 ? "10m" : st.k >= 1.8 ? "50m" : "110m"; if (want === landRes) return; landRes = want;
+      landSet(want).then((L) => { if (L && landRes === want) { land = L.land; coast = L.coast; draw(); } });
+    }
+    useLand(); places().then((p) => { placeList = p; draw(); });
     const scalarCanvas = document.createElement("canvas"), sctx = scalarCanvas.getContext("2d");
     function drawScalar(step) {
       const a = scalarArray(); if (!a || st.scalar === "none") return;
@@ -226,6 +241,24 @@
       bctx.lineJoin = "round"; bctx.miterLimit = 2; bctx.lineWidth = 3.5; bctx.strokeStyle = "rgba(6,22,34,.85)"; bctx.strokeText(text, p[0] + (opt.dx || 0), p[1]);
       bctx.fillStyle = opt.color || "#fff"; bctx.fillText(text, p[0] + (opt.dx || 0), p[1]);
     }
+    function drawPlaces() {
+      const z = Math.log2(2 * Math.PI * R / 256) + 0.9, boxes = [], max = 240;   // the web-map zoom the globe is shown at
+      bctx.font = `500 12px "IBM Plex Sans Condensed", "Arial Narrow", sans-serif`; bctx.textBaseline = "middle";
+      let n = 0;
+      for (const p of placeList) {
+        if (p[3] > z) break; if (!visible(p[2], p[1])) continue;
+        const xy = proj([p[2], p[1]]); if (!xy) continue;
+        const name = placeName(p), w = bctx.measureText(name).width + 8, b = [xy[0] - 3, xy[1] - 8, xy[0] + w, xy[1] + 8];
+        if (b[0] < 0 || b[2] > W || b[1] < 0 || b[3] > H) continue;
+        if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+        boxes.push(b); const big = p[3] <= 3;
+        bctx.beginPath(); bctx.arc(xy[0], xy[1], big ? 2.6 : 2, 0, 2 * Math.PI); bctx.fillStyle = "#fff"; bctx.fill();
+        bctx.lineJoin = "round"; bctx.lineWidth = 3; bctx.strokeStyle = "rgba(6,22,34,.85)"; bctx.textAlign = "left";
+        bctx.font = `${big ? 600 : 500} ${big ? 13 : 12}px "IBM Plex Sans Condensed", "Arial Narrow", sans-serif`;
+        bctx.strokeText(name, xy[0] + 5, xy[1]); bctx.fillStyle = big ? "#ffffff" : "#d7e3ea"; bctx.fillText(name, xy[0] + 5, xy[1]);
+        if (++n >= max) break;
+      }
+    }
     function drawOverlays() {
       const c = -st.rot[0];
       if (st.cells) {
@@ -294,6 +327,19 @@
         bctx.beginPath(); bctx.arc(p[0], p[1], 9, 0, 2 * Math.PI); bctx.fillStyle = s.color; bctx.fill(); bctx.lineWidth = 2; bctx.strokeStyle = "#fff"; bctx.stroke();
         label(`${s.name}, ${Math.round(s.vmax_kt * 1.852)} km/h`, s.lon, s.lat, { align: "left", size: 14, dx: 14 });
       }
+      if (st.fc) {                                            // GEFS members, ensemble mean (dashed) and day marks
+        for (const m of st.fc.members || []) { bctx.beginPath(); path({ type: "LineString", coordinates: m.map((q) => [q[2], q[1]]) }); bctx.strokeStyle = "rgba(255,255,255,.28)"; bctx.lineWidth = 1; bctx.stroke(); }
+        if (st.fc.mean) { bctx.beginPath(); path({ type: "LineString", coordinates: st.fc.mean.map((q) => [q[2], q[1]]) }); bctx.setLineDash([8, 5]); bctx.strokeStyle = "#ffd27a"; bctx.lineWidth = 2.6; bctx.stroke(); bctx.setLineDash([]);
+          for (const q of st.fc.mean) if (q[0] && q[0] % 24 === 0 && visible(q[2], q[1])) { const p = proj([q[2], q[1]]); bctx.beginPath(); bctx.arc(p[0], p[1], 4, 0, 2 * Math.PI); bctx.fillStyle = "#ffd27a"; bctx.fill();
+            label(`+${q[0] / 24}d`, q[2], q[1], { size: 11, color: "#ffd27a", align: "left", dx: 7 }); } }
+      }
+      if (st.showTowns) for (const tw of st.towns) {
+        if (!visible(tw.lon, tw.lat)) continue; const p = proj([tw.lon, tw.lat]);
+        bctx.fillStyle = tw.alert ? "#ff8f6b" : "#e8f0f4"; bctx.fillRect(p[0] - 3, p[1] - 3, 6, 6);
+        if (st.k >= 1.8) label(tw.name, tw.lon, tw.lat, { size: 11, align: "left", dx: 6, weight: 500 });
+      }
+      if (st.labels !== false && placeList.length && !st.dragging) drawPlaces();
+      if (st.sel) { const s0 = st.storms.find((x) => x.key === st.sel); if (s0 && visible(s0.lon, s0.lat)) { const p = proj([s0.lon, s0.lat]); bctx.beginPath(); bctx.arc(p[0], p[1], 15, 0, 2 * Math.PI); bctx.strokeStyle = "#ffd27a"; bctx.lineWidth = 2.5; bctx.stroke(); } }
       if (marker && visible(...marker)) { const p = proj(marker); bctx.beginPath(); bctx.arc(p[0], p[1], 6, 0, 2 * Math.PI); bctx.strokeStyle = "#fff"; bctx.lineWidth = 2; bctx.stroke(); }
       bctx.beginPath(); path({ type: "Sphere" }); bctx.strokeStyle = "rgba(180,210,230,.35)"; bctx.lineWidth = 1; bctx.stroke();
     }
@@ -349,11 +395,12 @@
       if (!was) pick(e);
     });
     flow.addEventListener("wheel", (e) => { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
-    function zoom(f) { st.k = Math.max(0.7, Math.min(8, st.k * f)); resetParticles(); draw(); }
+    function zoom(f) { st.k = Math.max(0.7, Math.min(24, st.k * f)); useLand(); resetParticles(); draw(); }
     function pick(e) {
       const r = flow.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       if ((x - W / 2) ** 2 + (y - H / 2) ** 2 > R * R) return;
       for (const s of st.storms) { const p = visible(s.lon, s.lat) && proj([s.lon, s.lat]); if (p && Math.hypot(p[0] - x, p[1] - y) < 16) { opts.onStorm && opts.onStorm(s.key); return; } }
+      if (st.showTowns) for (const tw of st.towns) { const p = visible(tw.lon, tw.lat) && proj([tw.lon, tw.lat]); if (p && Math.hypot(p[0] - x, p[1] - y) < 9) { opts.onTown && opts.onTown(tw.name); return; } }
       const ll = proj.invert([x, y]); if (!ll) return; const [lon, lat] = ll;
       marker = [lon, lat]; draw();
       opts.onPick && opts.onPick(readout(lon, lat));
@@ -375,11 +422,11 @@
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, setClimate(c) { st.climate = c; draw(); },
-      focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; resetParticles(); draw(); },
+      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },
     };
   }
-  window.WxMap = { create, FLOW, RAMPS, LEVEL_INFO, lut };
+  window.WxMap = { create, FLOW, RAMPS, LEVEL_INFO, lut, places, placeName, landSet };
 })();
