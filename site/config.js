@@ -8,7 +8,7 @@ window.SITE = {
   interests: [
     "Tropical Cyclones and Extreme Precipiation Event Analysis and Early Warning",
   ],
-  memberships: ["Member: IMS | OSI | SAMA | IMeCAN | ECR IIOE II | Carbon Brief | ECR IPCC"],
+  memberships: ["Member: IMS | OSI | SAMA | IMeCAN | ECR IIOE II | Carbon Brief | ECR IPCC | Representattive in Future Earth Assembly | YOUNGO"],
   links: {
     email: "",          // "you@example.com"
     scholar: "",        // Google Scholar profile URL
