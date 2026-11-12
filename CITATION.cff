@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Singh
     given-names: Devashish Prakash
-    affiliation: "MEGHA Lab, Department of Climate Change, Indian Institute of Technology Hyderabad"
+    affiliation: "Department of Climate Change, Indian Institute of Technology Hyderabad"
 license: MIT
 version: "1.0.0"
 doi: 10.5281/zenodo.24157024
