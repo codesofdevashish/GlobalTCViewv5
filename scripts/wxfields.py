@@ -24,6 +24,8 @@ TMP_R = {1000: (-50, 45), 850: (-50, 35), 700: (-50, 25), 500: (-60, 5), 300: (-
 RANGES = dict(mslp=(940, 1060), pwat=(0, 80), sst=(-2, 34), u10=(-40, 40), v10=(-40, 40), cape=(0, 5000), rain6=(0, 100), u=(-100, 100), v=(-100, 100), rh=(0, 100),
               hs=(0, 15), wu=(-1, 1), wv=(-1, 1), cu=(-2.5, 2.5), cv=(-2.5, 2.5))
 RTOFS = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncepRtofsG2DFore3hrlyProg.csv"
+_LM = os.path.join(os.path.dirname(__file__), "landmask-1deg.bin")         # 181 x 360, 1 = land (Natural Earth 1:50m, cell centres)
+STATIC_LAND = (np.fromfile(_LM, np.uint8).reshape(NY, NX) > 0) if os.path.exists(_LM) else np.zeros((NY, NX), bool)
 
 
 def waves(cycle, fh, sess):
@@ -112,7 +114,8 @@ def _q(a, lo, hi, mask=None):
 
 def write_time(fields, i, out):
     F = fields.get
-    land = F(("LAND", "surface")); land = (land > 0.5) if land is not None else np.zeros((NY, NX), bool)
+    land = F(("LAND", "surface")); land = (land > 0.5) if land is not None and land.shape == (NY, NX) else np.zeros((NY, NX), bool)
+    land = land | STATIC_LAND                       # GFS 1-degree files often lack LAND: add a fixed Natural Earth 1-degree mask
     miss = np.full((NY, NX), np.nan)
     def g(k): v = F(k); return v if v is not None and v.shape == (NY, NX) else miss
     sfc = dict(mslp=g(("PRMSL", "mean sea level")) / 100, pwat=g(("PWAT", "entire atmosphere (considered as a single layer)")),

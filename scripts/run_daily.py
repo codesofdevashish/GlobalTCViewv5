@@ -135,7 +135,8 @@ def main():
     idx = os.path.join(a.public, "index.html")
     html = open(idx, encoding="utf-8").read()
     with open(idx, "w", encoding="utf-8") as f:
-        f.write(html.replace("__BUILD__", build))
+        site = (a.site_url.rstrip("/") + "/") if a.site_url else ""          # share cards need full URLs
+        f.write(html.replace("__BUILD__", build).replace("__SITE_URL__", site))
     sess = requests.Session(); sess.headers["User-Agent"] = "tc3d-site/1.0"
 
     # previous site data (for the archive and as a fallback if a render fails)
