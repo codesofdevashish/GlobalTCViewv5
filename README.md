@@ -1,5 +1,7 @@
 # GlobalTCView
 
+[![DOI](https://zenodo.org/badge/1449072755.svg)](https://doi.org/10.5281/zenodo.24157024)
+
 Every tropical cyclone on Earth, explained for the people who live with them and the scientists who study them.
 
 - **Today**: a plain-language summary of active storms (wind in km/h, where they are relative to the nearest
@@ -69,6 +71,28 @@ For every storm the daily job also builds an indicative impact layer on a 0.1° 
 then about 40 MB cached by the workflow). If that step fails, the site still builds without the
 Impact view.
 
+## Set up (once)
+
+1. Create a **public** repository on GitHub and push these files to it.
+2. Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. **Actions → Daily cyclone videos → Run workflow** to build the site the first time
+   (about 5–10 min per active storm). After that it runs by itself every day.
+4. The site is at `https://<your-username>.github.io/<repo-name>/`.
+5. Edit `site/config.js` with your name, links and research interests, then commit.
+
+## Settings
+
+`scripts/run_daily.py` options (edit the command in the workflow):
+
+| option | default | meaning |
+|---|---|---|
+| `--max-days` | 5 | length of each video window |
+| `--max-storms` | 12 | most storms rendered per day (strongest first) |
+| `--archive-max` | 40 | number of past storms kept on the site |
+| `--include-invests` | off | also render invest areas |
+
+Look of the videos: `CFG` at the top of `tc3d/render.py`.
+
 ## Notes
 
 - Rapid intensification is flagged only from the official intensities (increase of at least
@@ -122,6 +146,7 @@ Place names (Natural Earth populated places, with Hindi names) appear by importa
 - `pytest -q` runs the tests of the scientific core (forecast verification, storm-surge index, RI guidance,
   weather-file encoding, land mask); they also run on GitHub for every push (`.github/workflows/tests.yml`).
 - Code: MIT licence (`LICENSE`). Data keep their providers' terms.
-- To cite the software, use `CITATION.cff` (GitHub shows a "Cite this repository" button).
+- To cite the software: Singh, D. P. (2026). *GlobalTCView*. Zenodo. https://doi.org/10.5281/zenodo.24157024
+  (all versions; v1.0.0 is https://doi.org/10.5281/zenodo.24157025). `CITATION.cff` gives the same in other formats.
 - Map settings can be linked directly, for example `#map?view=2d&layer=sst&level=1000&ov=cells&t=24&lon=85&lat=12&z=1.6`
   (the "Copy a link to this view" button on the live map writes them for you).

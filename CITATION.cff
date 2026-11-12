@@ -5,8 +5,17 @@ type: software
 authors:
   - family-names: Singh
     given-names: Devashish Prakash
-    affiliation: "Department of Climate Change, Indian Institute of Technology Hyderabad"
+    affiliation: "MEGHA Lab, Department of Climate Change, Indian Institute of Technology Hyderabad"
 license: MIT
+version: "1.0.0"
+doi: 10.5281/zenodo.24157024
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24157024
+    description: "All versions (concept DOI)"
+  - type: doi
+    value: 10.5281/zenodo.24157025
+    description: "Version 1.0.0"
 repository-code: "https://github.com/codesofdevashish/GlobalTCViewv5"
 url: "https://codesofdevashish.github.io/GlobalTCViewv5/"
 keywords: [tropical cyclones, rapid intensification, storm surge, GFS, visualisation, early warning, science communication]
