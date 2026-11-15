@@ -362,3 +362,7 @@ body[data-view="today"] { overflow-x: hidden; }
 .today .hero-bg { object-position: 62% 78%; filter: none; }
 .today .hero::before { background: linear-gradient(90deg, rgba(3, 8, 18, .88) 0%, rgba(3, 8, 18, .62) 40%, rgba(3, 8, 18, .18) 70%, rgba(3, 8, 18, .05) 100%),
   linear-gradient(0deg, rgba(3, 8, 18, .55), transparent 28%); }
+/* hero background: GlobalTCView's own atmospheric-flow artwork; the calm area on the right holds the live globe */
+.today .hero { background: #071a2a; }
+.today .hero-bg { object-position: 50% 50%; }
+.today .hero::before { background: linear-gradient(90deg, rgba(4, 12, 22, .55) 0%, rgba(4, 12, 22, .30) 45%, rgba(4, 12, 22, 0) 70%), linear-gradient(0deg, rgba(4, 12, 22, .35), transparent 30%); }
