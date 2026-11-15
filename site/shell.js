@@ -172,7 +172,7 @@
   let TOWNCAST = null;
   const IMD_RAIN = [[2.5, "rn.none"], [15.6, "rn.light"], [64.5, "rn.mod"], [115.6, "rn.heavy"], [204.5, "rn.vheavy"], [1e9, "rn.xheavy"]];
   const SEA = [[0.5, "sea.calm"], [1.25, "sea.slight"], [2.5, "sea.mod"], [4, "sea.rough"], [6, "sea.vrough"], [9, "sea.high"], [99, "sea.vhigh"]];
-  async function loadTowncast() { if (!TOWNCAST) { try { TOWNCAST = await getJSON("data/towns.json"); } catch (e) { return null; } } return TOWNCAST; }
+  async function loadTowncast() { if (!TOWNCAST) { try { TOWNCAST = await getJSON(`data/towns.json?t=${Date.now()}`); } catch (e) { return null; } } return TOWNCAST; }
   async function towncast(p) {
     const box = $("#towncast"); box.hidden = true; box.textContent = "";
     if (!(await loadTowncast())) return;

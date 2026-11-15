@@ -79,11 +79,11 @@
     async function loadTime(i) {
       const M = st.meta; if (!st.cache[i]) st.cache[i] = { surf: null, lev: {} };
       const C = st.cache[i];
-      if (!C.surf) { const s = unpack(await getBin(`${st.base}t${i}_sfc.bin`), M.sfc, M.ranges); await maskSea(s); C.surf = Object.assign(s, { u: s.u10, v: s.v10 }); }
+      if (!C.surf) { const s = unpack(await getBin(`${st.base}t${i}_sfc.bin?c=${encodeURIComponent(M.cycle)}`), M.sfc, M.ranges); await maskSea(s); C.surf = Object.assign(s, { u: s.u10, v: s.v10 }); }
       st.surf = C.surf; st.lev = C.lev;
     }
     async function load(baseUrl = "data/wx/") {
-      st.meta = await getJSON(baseUrl + "meta.json"); st.base = baseUrl;
+      st.meta = await getJSON(`${baseUrl}meta.json?t=${Date.now()}`); st.base = baseUrl;     // always the newest run, never a cached copy
       if (st.meta.format === "bin-v2") { st.t = st.meta.now || 0; await loadTime(st.t); }
       else { const s = await getJSON(baseUrl + "surface.json"); st.surf = {}; for (const [k, e] of Object.entries(s)) st.surf[k] = decode(e); await maskSea(st.surf); }
       await setLevel(st.meta.levels.includes(850) ? 850 : st.meta.levels[0]);
@@ -96,7 +96,7 @@
     async function levelData(p) {
       if (st.meta && st.meta.format === "bin-v2") {
         if (!st.lev[p]) { const M = st.meta, r = Object.assign({}, M.ranges, { hgt: M.ranges[`hgt${p}`], tmp: M.ranges[`tmp${p}`] });
-          st.lev[p] = unpack(await getBin(`${st.base}t${st.t}_l${p}.bin`), M.lev, r); }
+          st.lev[p] = unpack(await getBin(`${st.base}t${st.t}_l${p}.bin?c=${encodeURIComponent(M.cycle)}`), M.lev, r); }
         return st.lev[p];
       }
       if (p === 1000 && st.surf && st.surf.u && !st.lev[1000]) {        // near the surface, use 10 m winds

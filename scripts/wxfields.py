@@ -87,10 +87,12 @@ def fetch_messages(cycle, fh, want, sess, product="atmos/gfs.t{h}z.pgrb2.1p00.f{
     d, h = f"{cycle:%Y%m%d}", f"{cycle:%H}"
     rel = product.format(h=h, f=fh)
     for base in SOURCES:
-        url = f"{base}/gfs.{d}/{h}/{rel}"
+      url = f"{base}/gfs.{d}/{h}/{rel}"
+      for attempt in range(2):                                              # each server is tried twice before moving on
         try:
             r = sess.get(url + ".idx", timeout=60)
-            if r.status_code != 200: continue
+            if r.status_code == 404: break
+            if r.status_code != 200: raise IOError(f"HTTP {r.status_code}")
             lines = [l.split(":") for l in r.text.strip().splitlines()]
             out = {}
             for i, l in enumerate(lines):
@@ -101,8 +103,10 @@ def fetch_messages(cycle, fh, want, sess, product="atmos/gfs.t{h}z.pgrb2.1p00.f{
                         g = sess.get(url, headers={"Range": f"bytes={l[1]}-{end}"}, timeout=120)
                         if g.status_code in (200, 206): out[(var, lev)] = _decode(g.content)
             if out: return out
+            break
         except Exception as e:
-            print("  weather fields:", type(e).__name__, e)
+            print(f"  weather fields: {base.split('/')[2]} attempt {attempt + 1}: {type(e).__name__} {e}")
+            import time; time.sleep(5)
     return {}
 
 
@@ -135,7 +139,7 @@ def write_time(fields, i, out):
 def build(public, latest=None, sess=None):
     sess = sess or requests.Session(); sess.headers.setdefault("User-Agent", "tc3d-site/1.0")
     out = os.path.join(public, "data", "wx"); os.makedirs(out, exist_ok=True)
-    now = pd.Timestamp(latest) if latest is not None else (pd.Timestamp.now("UTC").tz_localize(None) - pd.Timedelta(hours=5)).floor("6h")
+    now = pd.Timestamp(latest) if latest is not None else pd.Timestamp.now("UTC").tz_localize(None).floor("6h")
     inst = lambda fh: {"anl"} if fh == 0 else {f"{fh} hour fcst"}
     def want(fh):
         w = [(v, f"{p} mb", inst(fh)) for p in LEVELS for v in ("UGRD", "VGRD", "HGT", "RH", "TMP")]
@@ -144,11 +148,23 @@ def build(public, latest=None, sess=None):
         if fh: w.append(("APCP", "surface", {f"{fh - 6}-{fh} hour acc fcst"}))
         return w
     times = []
-    for cyc0 in [now - pd.Timedelta(hours=6 * k) for k in range(3)]:            # newest cycle whose analysis exists
-        f0 = fetch_messages(cyc0, 0, want(0), sess)
-        if f0: break
-    else:
-        print("weather fields: no GFS 1-degree analysis found"); return None
+    def has(cyc, fh):                                                        # is this file published yet? (byte index only)
+        for base in SOURCES:
+            try:
+                r = sess.get(f"{base}/gfs.{cyc:%Y%m%d}/{cyc:%H}/atmos/gfs.t{cyc:%H}z.pgrb2.1p00.f{fh:03d}.idx", timeout=30)
+                if r.status_code == 200 and "PRMSL" in r.text: return True
+            except Exception:
+                pass
+        return False
+    cands = [now - pd.Timedelta(hours=6 * k) for k in range(5)]
+    full = next((c for c in cands if has(c, 0) and has(c, 120)), None)        # newest run with all 5 forecast days
+    cyc0 = full or next((c for c in cands if has(c, 0)), None)                 # else the newest analysis at least
+    if cyc0 is None:
+        print("::error::weather fields: no GFS 1-degree run found on NOMADS or AWS"); return None
+    print(f"weather fields: using GFS {cyc0:%Y-%m-%d %H}Z{'' if full else ' (forecasts still being published)'}")
+    f0 = fetch_messages(cyc0, 0, want(0), sess)
+    if not f0:
+        print("::error::weather fields: the analysis could not be downloaded"); return None
     CUR = currents(sess)
     plan = [(-48, cyc0 - pd.Timedelta(hours=48), 0), (-24, cyc0 - pd.Timedelta(hours=24), 0), (0, cyc0, 0)] + [(fh, cyc0, fh) for fh in (24, 48, 72, 96, 120)]
     for i, (off, cyc, fh) in enumerate(plan):

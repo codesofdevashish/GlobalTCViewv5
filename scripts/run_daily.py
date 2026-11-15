@@ -130,6 +130,13 @@ def main():
 
     shutil.rmtree(a.public, ignore_errors=True)
     shutil.copytree(os.path.join(ROOT, "site"), a.public)
+    # ---- the live map first: the newest GFS run, before anything slow (storms, videos) can delay it
+    try:
+        wm = W.build(a.public, None)
+        if wm: TC.build(a.public, pd.Timestamp(wm["cycle"].replace("Z", "")))   # 5-day rain, wind and sea for coastal towns
+        else: print("::warning::live map: no new GFS fields this run")
+    except Exception:
+        traceback.print_exc(); print("::warning::live map step failed")
     os.makedirs(os.path.join(a.public, "videos"), exist_ok=True); os.makedirs(os.path.join(a.public, "data"), exist_ok=True)
     build = pd.Timestamp.now("UTC").strftime("%Y%m%d%H%M")        # cache-busting: browsers always load today's files
     idx = os.path.join(a.public, "index.html")
@@ -372,10 +379,6 @@ def main():
     for k, fn in (("climate", X.climate_state), ("satellite", X.satellite_layers), ("season", lambda: C.season_vs_normal(IB))):
         try: extra[k] = fn()
         except Exception: traceback.print_exc()
-    try:
-        wm = W.build(a.public, None)                                        # global fields for the live map: always the newest GFS cycle
-        if wm: TC.build(a.public, pd.Timestamp(wm["cycle"].replace("Z", "")))   # 5-day rain, wind and sea for coastal towns
-    except Exception: traceback.print_exc()
     if VERIFY: extra["verification"] = V.season(VERIFY)
     if RI: extra["ri_model"] = {k: RI[k] for k in ("n", "auc", "base_rate", "note")}
     json.dump(extra, open(os.path.join(a.public, "data", "climo.json"), "w"), default=lambda o: o.item() if hasattr(o, "item") else str(o))
