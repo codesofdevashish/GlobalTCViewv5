@@ -103,6 +103,20 @@
     item(t("gl.storms"), String(named.length)); if (top) item(t("gl.strongest"), `${top.name}, ${Math.round(top.vmax_kt * KMH)} ${t("unit.kmh")}`, "wide");
     if (c.enso) item("ENSO", `${c.enso.phase} (${c.enso.value > 0 ? "+" : ""}${c.enso.value})`); if (c.mjo) item("MJO", c.mjo.active ? t("gl.phase", { n: c.mjo.phase }) : t("gl.weak"));
   }
+  // the hero's background: yesterday's NASA VIIRS true-colour view of the strongest storm (GIBS WMS, free, no key)
+  function heroSat() {
+    const img = $("#t-sat"), cap = $("#t-sat-cap"); if (!img) return;
+    const named = ACTIVE.filter((x) => !x.invest), top = (named.length ? named : ACTIVE).slice().sort((a, b) => b.vmax_kt - a.vmax_kt)[0];
+    const lon = top ? top.lon : 88, lat = top ? top.lat : 15, d = new Date(Date.now() - 864e5), day = d.toISOString().slice(0, 10);
+    const la0 = Math.max(-80, lat - 9), la1 = Math.min(80, lat + 9);
+    const lc = Math.max(-164, Math.min(164, ((lon + 540) % 360) - 180)), lo0 = lc - 16, lo1 = lc + 16;   // stay within -180..180 near the date line
+    const url = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=VIIRS_SNPP_CorrectedReflectance_TrueColor"
+      + `&STYLES=&CRS=EPSG:4326&BBOX=${la0},${lo0},${la1},${lo1}&WIDTH=1600&HEIGHT=900&FORMAT=image/jpeg&TIME=${day}`;
+    const probe = new Image();
+    probe.onload = () => { if (probe.naturalWidth > 100) { img.src = url; img.classList.add("sat");
+      cap.textContent = `${top ? `${top.name}, ` : "Bay of Bengal, "}${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}: NASA VIIRS (Suomi NPP) true colour, via NASA GIBS`; } };
+    probe.src = url;                                        // keep the illustration if NASA's service does not answer
+  }
   let wxMini = null;
   async function miniGlobe() {
     if (wxMini || !window.WxMap || !$("#t-globe")) return;
@@ -198,6 +212,8 @@
         const sl = $("#lv"); sl.max = meta.levels.length - 1; sl.value = Math.max(0, meta.levels.indexOf(850));
         const tm = $("#tm"), times = meta.times || []; tm.max = Math.max(0, times.length - 1); tm.value = meta.now || 0; $(".timebar").hidden = times.length < 2; timeLabel();
         $("#wx-time").textContent = t("map.time", { t: when(toMs(meta.cycle)) });
+        const ageH = (Date.now() - toMs(meta.cycle)) / 36e5;
+        if (ageH > 30) { $("#wx-time").append(el("strong", { class: "stale", text: ` ${t("map.stale", { h: Math.round(ageH / 24) })}` })); }
         if (window.Wx3D) wx3 = window.Wx3D.create($("#wx3d"), wx, { onPick: info, onStorm: (k) => stormPanel(k) });
         if (wx3) { await wx3.set("level", meta.levels[+sl.value]); } else { MODE = "2d"; $(".viewseg").hidden = true; $("#stack-row").hidden = true; }
       } catch (e) { $("#wx-time").textContent = t("map.notyet"); MODE = "2d"; }
@@ -323,12 +339,12 @@
     const box = $("#wx-legend"); box.textContent = ""; if (!wx) return;
     const F = window.WxMap.FLOW, s = wx.get("scalar"), R = wx.rampFor ? wx.rampFor(s) : window.WxMap.RAMPS[s];
     const unitK = window.I18N && window.I18N.lang === "hi" ? "किमी/घंटा" : "km/h";
-    const fl = wx.get("flow");
-    if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
+    const fl = wx.get("flow"), mono = wx.monoFlow ? wx.monoFlow() : false;
+    if (R) box.append(...bar(t(s === "speed" ? "lg.speed" : `lg.${s}`), R.stops, R.lo, R.hi, s === "speed" ? unitK : R.unit));
+    if (wx.get("wind") && mono) box.append(el("p", { class: "note", text: t(fl === "waves" ? "lg.monowaves" : fl === "currents" ? "lg.monocur" : "lg.mono") }));
+    else if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
     else if (wx.get("wind") && fl === "currents") box.append(...bar(t("lg.flcur"), F.stops, 0, 2, "m/s"));
-    else if (wx.get("wind")) box.append(...bar(t(s === "speed" ? "lg.both" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
-    if (R && s !== "speed") box.append(...bar(t(`lg.${s}`), R.stops, R.lo, R.hi, R.unit));
-    if (R && s === "speed" && !wx.get("wind")) box.append(...bar(t("lg.both"), R.stops, R.lo, R.hi, unitK));
+    else if (wx.get("wind")) box.append(...bar(t("lg.flow"), F.stops, F.lo, F.hi, unitK));
     const p = wx.levels()[+$("#lv").value];
     if (wx.get("contours")) box.append(el("p", { class: "note", text: p === 1000 ? t("lg.iso") : t("lg.hgt", { p, s: p >= 700 ? 30 : p >= 500 ? 60 : 120 }) }));
     if (MODE === "3d" && wx3) box.append(el("p", { class: "note", text: t("lg.3d", { x: wx3.get("mode") === "stack" ? 75 : 38 }) }));
@@ -470,12 +486,22 @@
     try { await navigator.clipboard.writeText(location.href); b.textContent = t("ly.copied", {}, "Link copied"); } catch (e) { b.textContent = location.href; }
     setTimeout(() => { b.textContent = old; }, 1800);
   });
-  // About: author details from config.js
-  (() => { const S_ = window.SITE || {}, box = $("#ab-author"); if (!box) return;
-    box.append(`Made by ${S_.name || "the author"}${S_.affiliation ? `, ${S_.affiliation}` : ""}. `);
-    for (const [k, label] of [["github", "GitHub"], ["scholar", "Google Scholar"], ["linkedin", "LinkedIn"], ["email", "Email"]]) {
-      const v = S_.links && S_.links[k]; if (v) box.append(el("a", { href: k === "email" ? `mailto:${v}` : v, target: "_blank", rel: "noopener", text: label }), " ");
-    } })();
+  // About: author card from config.js, and citation copying
+  (() => {
+    const S_ = window.SITE || {}, nm = S_.name || "", L = S_.links || {};
+    if ($("#ab-name")) { $("#ab-name").textContent = nm; $("#ab-aff").textContent = S_.affiliation || ""; $("#ab-bio").textContent = S_.summary || "";
+      const w_ = nm.split(/\s+/).filter(Boolean); $("#ab-initials").textContent = (w_.length > 1 ? w_[0][0] + w_[w_.length - 1][0] : (w_[0] || "").slice(0, 2)).toUpperCase();
+      for (const [k, label] of [["github", "GitHub"], ["orcid", "ORCID"], ["scholar", "Google Scholar"], ["linkedin", "LinkedIn"], ["cv", "CV"], ["email", "Email"]]) {
+        const v = L[k]; if (v) $("#ab-links").append(el("a", { href: k === "email" ? `mailto:${v}` : v, target: "_blank", rel: "noopener", text: label }));
+      }
+      const G = (S_.guides || []).filter((g) => g && g.name);
+      if (G.length) { $("#ab-guides").hidden = false;
+        for (const g of G) $("#ab-guide-list").append(el("li", {}, [g.link ? el("a", { href: g.link, target: "_blank", rel: "noopener", text: g.name }) : el("b", { text: g.name }), g.affiliation ? el("span", { text: g.affiliation }) : null])); } }
+    const copy = async (btn, text) => { const old = btn.textContent; try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; } catch (e) { btn.textContent = "Copy failed"; } setTimeout(() => { btn.textContent = old; }, 1600); };
+    const plain = "Singh, D. P. (2026). GlobalTCView. Zenodo. https://doi.org/10.5281/zenodo.24157024";
+    const bib = "@software{singh_globaltcview_2026,\n  author    = {Singh, Devashish Prakash},\n  title     = {GlobalTCView},\n  year      = {2026},\n  publisher = {Zenodo},\n  doi       = {10.5281/zenodo.24157024},\n  url       = {https://doi.org/10.5281/zenodo.24157024}\n}";
+    if ($("#ab-copy")) { $("#ab-copy").addEventListener("click", (e) => copy(e.currentTarget, plain)); $("#ab-bib").addEventListener("click", (e) => copy(e.currentTarget, bib)); }
+  })();
   function openStorm(key) { show("analysis"); const go = () => { if (window.TCDash && window.TCDash.open(key)) return; setTimeout(go, 200); }; go(); }
   window.addEventListener("hashchange", route);
   $$(".views a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); show(a.dataset.view); }));
@@ -512,7 +538,7 @@
   diagrams(); route();
   getJSON("data/storms.json").then((d) => {
     DATA = d; ACTIVE = (d.storms || []).filter((s) => s.status === "active" && s.track && s.track.length);
-    today(); glance(); miniGlobe();
+    today(); glance(); miniGlobe(); heroSat();
     try { const p = JSON.parse(localStorage.getItem("tc-place") || "null"); if (p) { assess(p); const o = [...city.options].find((x) => x.value.endsWith(`,${p.name}`)); if (o) city.value = o.value; } } catch (e) { /* ignore */ }
     both((m) => m.setStorms(stormList()));
   }).catch(() => { $("#t-headline").textContent = "The storm list could not be loaded. It is created by the site's regular update."; });

@@ -138,7 +138,7 @@
           show: new C.CallbackProperty(() => !!posAt(s, replayT), false), disableDepthTestDistance: 0 } }));
       });
     }
-    function setTime(ms) { replayT = ms === null || ms === undefined ? null : ms; if (replayT !== null) setViirsDay(replayT); else setViirsDay(yesterday); }
+    function setTime(ms) { replayT = ms === null || ms === undefined ? null : ms; setViirsDay(replayT !== null ? Math.min(replayT, Date.now() - 864e5) : Date.now() - 864e5); }
 
     // ---- picking, camera, spin
     const handler = new C.ScreenSpaceEventHandler(scene.canvas);

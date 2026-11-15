@@ -7,6 +7,12 @@
     for (const [k, v] of Object.entries(attrs)) { if (v == null || v === false) continue; if (k === "text") n.textContent = v; else n.setAttribute(k, v); }
     for (const k of [].concat(kids)) if (k != null) n.append(k); return n; };
   const S = () => window.TCShell || {}, D = () => (S().data ? S().data() : { ACTIVE: [], CLIMO: null });
+  const HI = () => !!(window.I18N && window.I18N.lang === "hi");
+  const T = (k, en, v = {}) => { let x = (window.I18N && window.I18N.lang === "hi" && window.I18N.t(k, v, "")) || en; for (const [a, b] of Object.entries(v)) x = x.split(`{${a}}`).join(b); return x; };
+  const GH = {                                        // Hindi for the guide's main questions and answers
+    now: "अभी क्या हो रहा है?", town: "क्या मेरे शहर की ओर चक्रवात आ रहा है?", form: "चक्रवात कैसे बनता है?", cells: "हैडली, फ़ेरल और ध्रुवीय कोशिकाएँ क्या हैं?",
+    enso: "अभी एल नीनो है या ला नीना?", gyre: "समुद्री गायर क्या हैं?", map: "लाइव मानचित्र कैसे इस्तेमाल करें?", tour: "साइट का दौरा करें",
+  };
   const kmh = (kt) => Math.round(kt * 1.852);
 
   // ---------------------------------------------------------------- what the guide knows
@@ -23,27 +29,37 @@
   const TOPICS = [
     { id: "now", q: "What's happening now?", keys: ["now", "today", "current", "active", "storm", "cyclone right", "happening", "news"], a: () => {
       const A = (D().ACTIVE || []).slice().sort((a, b) => b.vmax_kt - a.vmax_kt);
-      if (!A.length) return { text: "No tropical cyclones are active anywhere right now. You can still explore today's winds and oceans on the live map.", acts: [["Open the live map", () => S().show("map")]] };
+      if (!A.length) return { text: HI() ? "इस समय कहीं भी कोई उष्णकटिबंधीय चक्रवात सक्रिय नहीं है। आप लाइव मानचित्र पर आज की हवाएँ और महासागर देख सकते हैं।" : "No tropical cyclones are active anywhere right now. You can still explore today's winds and oceans on the live map.", acts: [[HI() ? "लाइव मानचित्र खोलें" : "Open the live map", () => S().show("map")]] };
+      if (HI()) return { text: `${A.length === 1 ? "एक तूफ़ान सक्रिय है।" : `${A.length} तूफ़ान सक्रिय हैं।`} ` + A.slice(0, 4).map((s) => `${s.name}: ${S().className ? S().className(s, s.vmax_kt) : ""}, ${kmh(s.vmax_kt)} किमी/घंटा की हवाएँ, ${S().where ? S().where(s) : s.basin_name}।`).join(" "),
+        acts: A.slice(0, 3).map((s) => [`${s.name} दिखाएँ`, async () => { S().show("map"); await S().initMap(); S().stormPanel(s.key); }]) };
       const lines = A.slice(0, 4).map((s) => `${s.name}: ${S().className ? S().className(s, s.vmax_kt) : ""}, winds of ${kmh(s.vmax_kt)} km/h, ${S().where ? S().where(s) : s.basin_name}.`);
       return { text: `${A.length === 1 ? "One storm is" : `${A.length} storms are`} active. ${lines.join(" ")}`,
         acts: A.slice(0, 3).map((s) => [`Show ${s.name}`, async () => { S().show("map"); await S().initMap(); S().stormPanel(s.key); }]) };
     } },
-    { id: "town", q: "Is a cyclone coming to my town?", keys: ["my town", "my city", "near me", "coming", "my place", "location", "safe", "hit"], a: () => ({
+    { id: "town", q: "Is a cyclone coming to my town?", keys: ["my town", "my city", "near me", "coming", "my place", "location", "safe", "hit", "शहर", "मेरे"], a: () => HI() ? ({
+      text: "आज पेज पर शहर जाँच का उपयोग करें: अपना शहर चुनें या अपनी जगह साझा करें। यह बताएगा कि अगले पाँच दिनों में कोई तूफ़ान कितना पास आ सकता है, और किस आधिकारिक एजेंसी का पालन करना है। आपकी जगह आपके डिवाइस पर ही रहती है।",
+      acts: [["मेरा शहर जाँचें", () => { S().show("today"); setTimeout(() => { const c = $("#city"); if (c) { c.scrollIntoView({ behavior: "smooth", block: "center" }); c.focus({ preventScroll: true }); } }, 80); }]] }) : ({
       text: "Use the town check on the Today page: choose your town or share your location, and it tells you how close any storm may come in the next five days, with the official agency to follow. Your place stays on your device.",
       acts: [["Check my town", () => { S().show("today"); setTimeout(() => { const c = $("#city"); if (c) { c.scrollIntoView({ behavior: "smooth", block: "center" }); c.focus({ preventScroll: true }); } }, 80); }]] }) },
-    { id: "form", q: "How does a cyclone form?", keys: ["form", "formation", "made", "born", "ingredient", "need", "why do cyclones", "how do cyclones"], a: () => ({
+    { id: "form", q: "How does a cyclone form?", keys: ["form", "formation", "made", "born", "ingredient", "need", "why do cyclones", "how do cyclones", "बनता", "बनते"], a: () => HI() ? ({
+      text: "चक्रवात को चार चीज़ें एक साथ चाहिए: ऊर्जा के लिए गर्म समुद्र (लगभग 26.5 °C या अधिक), गहरी परत तक नम हवा, कमज़ोर पवन अपरूपण ताकि तूफ़ान बिखरे नहीं, और भूमध्य रेखा से दूर घूमती हुई शुरुआत। गर्म नम हवा गरज वाले बादलों में ऊपर उठती है, दबाव गिरता है, हवाएँ तेज़ होती हैं और और नम हवा अंदर खींचती हैं।",
+      acts: [["सामग्री वाला खेल खेलें", () => S().goto("game")], ["मानचित्र पर गर्म समुद्र दिखाएँ", () => S().goto("sst")]] }) : ({
       text: "A cyclone needs four things together: warm sea (about 26.5 °C or more) to fuel it, moist air through a deep layer, weak vertical wind shear so the storm is not torn apart, and a spinning start away from the equator. Warm moist air rises in thunderstorms, pressure falls, winds speed up and draw in more moist air.",
       acts: [["Play the ingredients game", () => S().goto("game")], ["Show warm sea on the map", () => S().goto("sst")]] }) },
     { id: "eye", q: "What is the eye of a cyclone?", keys: ["eye", "eyewall", "calm"], a: () => ({
       text: "The eye is the calm, often clear centre of a strong cyclone, where air sinks. Around it the eyewall has the strongest winds and heaviest rain. If the wind suddenly stops during a cyclone, it may be the eye passing: stay inside, the wind will return from the other side.",
       acts: [["See the diagram", () => { S().show("learn"); setTimeout(() => $("#l-tc").scrollIntoView({ behavior: "smooth" }), 60); }]] }) },
-    { id: "cells", q: "What are the Hadley, Ferrel and polar cells?", keys: ["hadley", "ferrel", "polar cell", "cell", "trade wind", "westerl", "itcz", "circulation"], a: () => ({
+    { id: "cells", q: "What are the Hadley, Ferrel and polar cells?", keys: ["hadley", "ferrel", "polar cell", "cell", "trade wind", "westerl", "itcz", "circulation", "कोशिका", "हैडली"], a: () => HI() ? ({
+      text: "वायुमंडल हर गोलार्ध में तीन बड़े चक्रों में घूमता है। हैडली कोशिका में हवा भूमध्य रेखा के पास (ITCZ में) ऊपर उठती है, ऊँचाई पर ध्रुवों की ओर जाती है, लगभग 30° पर नीचे उतरती है और व्यापारिक पवनों के रूप में लौटती है। 30–60° के बीच फ़ेरल कोशिका पछुआ हवाएँ देती है; ध्रुवीय कोशिका ध्रुवों पर ठंडी हवा नीचे उतारती है।",
+      acts: [["मानचित्र पर कोशिकाएँ दिखाएँ", () => S().goto("cells")]] }) : ({
       text: "The atmosphere turns over in three great loops in each hemisphere. In the Hadley cell air rises near the equator (the ITCZ), flows poleward high up, sinks near 30° and returns as the trade winds. The Ferrel cell, 30–60°, gives the westerlies; the polar cell sinks cold air at the poles.",
       acts: [["Show the cells on the map", () => S().goto("cells")]] }) },
     { id: "walker", q: "What is the Walker circulation?", keys: ["walker", "pacific loop", "east-west"], a: () => ({
       text: "Along the equatorial Pacific, trade winds push warm water west; air rises over the warm west Pacific and sinks over the cool east Pacific. During El Niño this loop weakens and its rising branch moves east.",
       acts: [["Show it on the map", () => S().goto("walker")]] }) },
-    { id: "enso", q: "Is it El Niño or La Niña now?", keys: ["el nino", "el niño", "la nina", "la niña", "enso", "nino"], a: () => { const e = D().CLIMO && D().CLIMO.climate && D().CLIMO.climate.enso;
+    { id: "enso", q: "Is it El Niño or La Niña now?", keys: ["el nino", "el niño", "la nina", "la niña", "enso", "nino", "नीनो", "नीना"], a: () => { const e = D().CLIMO && D().CLIMO.climate && D().CLIMO.climate.enso;
+      if (HI()) return { text: (e ? `अभी ENSO की स्थिति ${e.phase} है: नीनो 3.4 सूचकांक ${e.value > 0 ? "+" : ""}${e.value} °C है (${e.season}, NOAA)। ` : "") + "एल नीनो का मतलब है कि मध्य और पूर्वी भूमध्यरेखीय प्रशांत महासागर कई महीनों तक सामान्य से कम से कम 0.5 °C गर्म रहता है; ला नीना का मतलब 0.5 °C या अधिक ठंडा। ये दुनिया भर में तूफ़ानों और बारिश को प्रभावित करते हैं।",
+        acts: [["नीनो 3.4 क्षेत्र दिखाएँ", () => S().goto("nino")]] };
       return { text: (e ? `Right now ENSO is ${e.phase}: the Niño 3.4 index is ${e.value > 0 ? "+" : ""}${e.value} °C (${e.season}, NOAA). ` : "") +
         "El Niño means the central and eastern equatorial Pacific is at least 0.5 °C warmer than normal for several months; La Niña means 0.5 °C or more cooler. They shift storms and rainfall around the world.",
         acts: [["Show the Niño 3.4 region", () => S().goto("nino")]] }; } },
@@ -52,7 +68,9 @@
         acts: [["Show the dipole boxes", () => S().goto("nino")]] }; } },
     { id: "mjo", q: "What is the MJO?", keys: ["mjo", "madden", "julian"], a: () => { const m = D().CLIMO && D().CLIMO.climate && D().CLIMO.climate.mjo;
       return { text: `The Madden–Julian Oscillation is a pulse of clouds and rain that travels east around the tropics every 30–60 days. Where its wet phase is, cyclones are more likely to form: phases 2–4 favour the Indian Ocean.${m ? ` Right now it is ${m.active ? `in phase ${m.phase}` : "weak"}.` : ""}`, acts: [] }; } },
-    { id: "gyre", q: "What are ocean gyres?", keys: ["gyre", "ocean current", "currents", "ocean"], a: () => ({
+    { id: "gyre", q: "What are ocean gyres?", keys: ["gyre", "ocean current", "currents", "ocean", "गायर", "धारा"], a: () => HI() ? ({
+      text: "हवाएँ समुद्र की सतह पर पाँच विशाल चक्र चलाती हैं, जिन्हें गायर कहते हैं: उत्तरी गोलार्ध में दक्षिणावर्त, दक्षिणी में वामावर्त। उनके पश्चिमी किनारों पर गर्म धाराएँ ध्रुवों की ओर बहती हैं (गल्फ़ स्ट्रीम, कुरोशियो, अगुलहास); पूर्वी किनारों पर ठंडी धाराएँ भूमध्य रेखा की ओर बहती हैं (कैनरी, कैलिफ़ोर्निया, बेंगुएला, हम्बोल्ट)।",
+      acts: [["धाराएँ और गायर दिखाएँ", () => S().goto("ocean")]] }) : ({
       text: "Winds drive five great loops of surface currents, the gyres: clockwise in the Northern Hemisphere, anticlockwise in the Southern. Warm currents run poleward on their western sides (Gulf Stream, Kuroshio, Agulhas); cold currents flow towards the equator on their eastern sides (Canary, California, Benguela, Humboldt).",
       acts: [["Show currents and gyres", () => S().goto("ocean")]] }) },
     { id: "shear", q: "What is wind shear?", keys: ["shear"], a: () => ({
@@ -70,12 +88,14 @@
     { id: "scale", q: "How are cyclones classified?", keys: ["category", "class", "scale", "severe", "imd", "saffir", "strong is"], a: () => ({
       text: "In the North Indian Ocean, IMD classes run from Depression (31–61 km/h) through Cyclonic Storm (62–88 km/h), Severe, Very Severe and Extremely Severe, to Super Cyclonic Storm (222 km/h or more). Elsewhere the Saffir–Simpson scale goes from category 1 (119 km/h) to category 5 (252 km/h or more).",
       acts: [["See the full table", () => { S().show("learn"); setTimeout(() => $("#l-scale").scrollIntoView({ behavior: "smooth" }), 60); }]] }) },
-    { id: "map", q: "How do I use the live map?", keys: ["use the map", "map", "layer", "slider", "3d", "flat", "how do i"], a: () => ({
+    { id: "map", q: "How do I use the live map?", keys: ["use the map", "map", "layer", "slider", "3d", "flat", "how do i", "मानचित्र"], a: () => HI() ? ({
+      text: "लाइव मानचित्र पर: पृथ्वी को घुमाने के लिए खींचें, ज़ूम के लिए स्क्रॉल करें या + और − दबाएँ। चुनें कि चलती रेखाएँ क्या दिखाएँ (हवा, लहरें या धाराएँ) और मानचित्र का रंग किससे हो। ऊँचाई स्लाइडर वायुमंडल में ऊपर-नीचे ले जाता है; समय स्लाइडर दो दिन पहले से पाँच दिन आगे तक। किसी भी जगह क्लिक करके वहाँ के मान पढ़ें।",
+      acts: [["दौरा शुरू करें", () => tour()]] }) : ({
       text: "On the live map: drag to turn the Earth, scroll or use + and − to zoom. Choose what the moving lines show (wind, waves or currents) and what colours the map. The height slider moves through the atmosphere; the time slider goes from two days ago to five days ahead. Click anywhere to read the values there.",
       acts: [["Take the tour", () => tour()]] }) },
     { id: "data", q: "Where does the data come from?", keys: ["data", "source", "accurate", "reliable", "official", "who made"], a: () => ({
-      text: "Weather, waves and currents come from NOAA's GFS, WaveWatch III and RTOFS models; storm positions from official advisories (TCVitals); history from IBTrACS; imagery from NASA. It is a research site by Devashish (IIT Hyderabad), not an official warning service: always follow your national weather service.", acts: [] }) },
-    { id: "tour", q: "Take the tour", keys: ["tour", "show me around", "help", "start", "guide me"], a: () => ({ text: "Here is a quick tour of the site.", acts: [["Start the tour", () => tour()]] }) },
+      text: "Weather, waves and currents come from NOAA's GFS, WaveWatch III and RTOFS models; storm positions from official advisories (TCVitals); history from IBTrACS; imagery from NASA. It is a research site by Devashish Prakash Singh (Department of Climate Change, IIT Hyderabad), not an official warning service: always follow your national weather service.", acts: [] }) },
+    { id: "tour", q: "Take the tour", keys: ["tour", "show me around", "help", "start", "guide me", "दौरा", "मदद"], a: () => ({ text: HI() ? "यह रहा साइट का छोटा दौरा।" : "Here is a quick tour of the site.", acts: [[HI() ? "दौरा शुरू करें" : "Start the tour", () => tour()]] }) },
   ];
   for (const [k, c] of Object.entries(CURRENTS)) TOPICS.push({ id: `cur-${k}`, keys: [k, c[0].toLowerCase()], a: () => ({ text: `${c[0]}: ${c[1]}`,
     acts: [["Show it on the map", async () => { S().show("map"); await S().initMap(); await S().overlay("ocean"); await S().flow("currents"); S().focus(c[2], c[3], 2.2); }]] }) });
@@ -83,6 +103,7 @@
   function answer(q) {
     const t = ` ${q.toLowerCase()} `; let best = null, score = 0;
     for (const tp of TOPICS) { let sc = 0; for (const k of tp.keys) if (t.includes(k)) sc += k.length; if (sc > score) { score = sc; best = tp; } }
+    if (!best && HI()) return { text: "यह मुझे अभी नहीं पता। मैं आज के तूफ़ानों, आपके शहर, चक्रवात कैसे बनते हैं, परिसंचरण कोशिकाओं, एल नीनो, समुद्री धाराओं या मानचित्र के उपयोग के बारे में बता सकता हूँ।", acts: [] };
     if (!best) return { text: "I don't know that one yet. I can tell you about today's storms, your town, how cyclones form, the circulation cells, El Niño, the ocean currents, waves, storm surge or how to use the map.", acts: [] };
     return best.a();
   }
@@ -97,14 +118,14 @@
   function suggestions() {
     const box = $("#g-sugg"); box.textContent = "";
     for (const id of ["now", "town", "form", "cells", "enso", "gyre", "map", "tour"]) {
-      const tp = TOPICS.find((x) => x.id === id); const b = el("button", { type: "button", class: "chip-l", text: tp.q });
-      b.addEventListener("click", () => ask(tp.q)); box.append(b);
+      const tp = TOPICS.find((x) => x.id === id), q = HI() ? GH[id] : tp.q; const b = el("button", { type: "button", class: "chip-l", text: q });
+      b.addEventListener("click", () => { say("me", q); const r = tp.a(); setTimeout(() => say("bot", r.text, r.acts), 180); }); box.append(b);
     }
   }
   function ask(q) { say("me", q); const r = answer(q); setTimeout(() => say("bot", r.text, r.acts), 180); }
   function open() {
     panel.hidden = false; fab.setAttribute("aria-expanded", "true");
-    if (!log.childElementCount) { say("bot", "Hello! I can show you around and explain what you see. Ask a question or pick one below."); suggestions(); }
+    if (!log.childElementCount) { say("bot", HI() ? "नमस्ते! मैं आपको साइट दिखा सकता हूँ और जो दिखता है उसे समझा सकता हूँ। कोई सवाल पूछें या नीचे से चुनें।" : "Hello! I can show you around and explain what you see. Ask a question or pick one below."); suggestions(); }
     $("#g-q").focus();
   }
   const close = () => { panel.hidden = true; fab.setAttribute("aria-expanded", "false"); };
@@ -126,6 +147,11 @@
     ["about", "#about-h", "About", "Where the data come from, how the estimates are made, and how to cite the site."],
     ["today", "#guide-fab", "Ask the guide", "Ask me anything, any time. That's the tour!"],
   ];
+  const STEPS_HI = [["आज", "मुख्य पंक्ति सरल शब्दों में बताती है कि कौन से चक्रवात सक्रिय हैं और कहाँ।"], ["आपका शहर", "अपना शहर चुनें और देखें कि अगले पाँच दिनों में कोई तूफ़ान पास आ सकता है या नहीं, साथ में बारिश, हवा और समुद्र का पाँच दिन का पूर्वानुमान।"],
+    ["अभी के तूफ़ान", "हर सक्रिय तूफ़ान, उसकी ताकत किमी/घंटा में और उसकी दिशा। उसे मानचित्र या विश्लेषण में खोलें।"], ["3D ग्लोब या सपाट मानचित्र", "3D ग्लोब और सपाट मानचित्र के बीच बदलें। 3D में सभी ऊँचाइयाँ एक साथ देखकर चक्रवात का भँवर देखें।"],
+    ["परतें", "चुनें कि चलती रेखाएँ क्या दिखाएँ (हवा, लहरें या धाराएँ), मानचित्र का रंग किससे हो, और शिक्षण परतें।"], ["समय", "दो दिन पहले से पाँच दिन आगे तक खिसकाएँ, या चलाएँ दबाएँ।"], ["ऊँचाई", "सतह से लगभग 12 किमी तक वायुमंडल में ऊपर जाएँ।"],
+    ["तूफ़ान विश्लेषण", "हर तूफ़ान के लिए: 3D प्रवाह, ट्रैक मानचित्र, तुलना और प्रभाव, एक ही समयरेखा पर।"], ["खेलकर सीखें", "सामग्री वाला खेल आज़माएँ: क्या आप चक्रवात बना सकते हैं?"],
+    ["परिचय", "डेटा कहाँ से आता है, अनुमान कैसे बनते हैं, और साइट को कैसे उद्धृत करें।"], ["गाइड से पूछें", "कभी भी कुछ भी पूछें। दौरा पूरा हुआ!"]];
   let step = 0;
   function tour() { close(); step = 0; $("#tour").hidden = false; showStep(); }
   function showStep() {
@@ -137,11 +163,12 @@
       const r = target ? target.getBoundingClientRect() : { left: innerWidth / 2 - 100, top: innerHeight / 2 - 40, width: 200, height: 80 };
       Object.assign(spot.style, { left: `${r.left - 8}px`, top: `${r.top - 8}px`, width: `${r.width + 16}px`, height: `${r.height + 16}px` });
       tip.textContent = "";
-      tip.append(el("p", { class: "tt-step", text: `${step + 1} of ${STEPS.length}` }), el("h3", { text: title }), el("p", { text }));
+      const hi = HI() && STEPS_HI[step], tTitle = hi ? hi[0] : title, tText = hi ? hi[1] : text;
+      tip.append(el("p", { class: "tt-step", text: HI() ? `${STEPS.length} में से ${step + 1}` : `${step + 1} of ${STEPS.length}` }), el("h3", { text: tTitle }), el("p", { text: tText }));
       const row = el("div", { class: "g-acts" });
-      if (step > 0) { const b = el("button", { type: "button", class: "btn ghost", text: "Back" }); b.addEventListener("click", () => { step--; showStep(); }); row.append(b); }
-      const n = el("button", { type: "button", class: "btn", text: step < STEPS.length - 1 ? "Next" : "Finish" }); n.addEventListener("click", () => { if (step < STEPS.length - 1) { step++; showStep(); } else endTour(); }); row.append(n);
-      const x = el("button", { type: "button", class: "btn ghost", text: "Skip" }); x.addEventListener("click", endTour); row.append(x);
+      if (step > 0) { const b = el("button", { type: "button", class: "btn ghost", text: HI() ? "पीछे" : "Back" }); b.addEventListener("click", () => { step--; showStep(); }); row.append(b); }
+      const n = el("button", { type: "button", class: "btn", text: step < STEPS.length - 1 ? (HI() ? "आगे" : "Next") : (HI() ? "पूरा करें" : "Finish") }); n.addEventListener("click", () => { if (step < STEPS.length - 1) { step++; showStep(); } else endTour(); }); row.append(n);
+      const x = el("button", { type: "button", class: "btn ghost", text: HI() ? "छोड़ें" : "Skip" }); x.addEventListener("click", endTour); row.append(x);
       tip.append(row);
       const below = r.top + r.height + 220 < innerHeight;
       Object.assign(tip.style, { left: `${Math.max(12, Math.min(innerWidth - 352, r.left))}px`, top: below ? `${r.top + r.height + 16}px` : `${Math.max(12, r.top - 200)}px` });
@@ -162,17 +189,28 @@
     surge: [["Why is storm surge worst at the head of the Bay of Bengal?", ["The water there is warmest", "The shelf is wide and shallow, so wind-driven water piles up", "Cyclones there are always the strongest"], 1, "Over a shallow shelf the water pushed by the wind has nowhere to go but up and inland."],
              ["Which storm usually brings the most rain to one place?", ["A fast-moving strong storm", "A slow-moving storm, even a weak one", "A storm far out at sea"], 1, "Rain adds up with time: a storm that lingers keeps its rainbands over the same place."]],
   };
-  for (const box of $$(".quiz[data-quiz]")) {
-    const qs = QUIZ[box.dataset.quiz]; if (!qs) continue; box.hidden = false;
-    box.append(el("h3", { text: "Quick quiz" }));
+  const QUIZ_HI = {
+    cells: [["हैडली कोशिका में हवा कहाँ ऊपर उठती है?", ["भूमध्य रेखा के पास", "लगभग 30° अक्षांश पर", "ध्रुवों पर"], 0, "गर्म हवा भूमध्य रेखा के पास, ITCZ में, ऊपर उठती है और लगभग 30° पर नीचे उतरती है।"],
+            ["30° और 60° के बीच सतह पर कौन सी हवाएँ चलती हैं?", ["व्यापारिक पवनें", "पछुआ हवाएँ", "ध्रुवीय पुरवा हवाएँ"], 1, "फ़ेरल कोशिका पछुआ हवाएँ देती है, जो मौसम को पश्चिम से पूर्व की ओर ले जाती हैं।"]],
+    walker: [["एल नीनो के दौरान वॉकर परिसंचरण की ऊपर उठने वाली शाखा कहाँ जाती है?", ["पश्चिम में, अफ़्रीका की ओर", "पूर्व में, मध्य प्रशांत की ओर", "हमेशा के लिए गायब हो जाती है"], 1, "गर्म पानी पूर्व की ओर फैलता है, और ऊपर उठती हवा उसके साथ जाती है।"],
+             ["किस क्षेत्र का समुद्री तापमान एल नीनो तय करता है?", ["बंगाल की खाड़ी", "भूमध्यरेखीय प्रशांत में नीनो 3.4", "उत्तरी अटलांटिक"], 1, "नीनो 3.4 क्षेत्र 5°S–5°N, 170°W–120°W है।"]],
+    tc: [["उष्णकटिबंधीय चक्रवात के लिए समुद्र लगभग कितना गर्म होना चाहिए?", ["लगभग 15 °C", "लगभग 26.5 °C", "लगभग 35 °C"], 1, "लगभग 26.5 °C से नीचे समुद्र पर्याप्त गर्मी और नमी नहीं देता।"],
+         ["चक्रवात लगभग कभी भूमध्य रेखा पर क्यों नहीं बनते?", ["समुद्र बहुत ठंडा है", "पृथ्वी का घूमना वहाँ भँवर शुरू नहीं कर पाता", "वहाँ हवा नहीं होती"], 1, "कोरिओलिस प्रभाव, जो हवाओं को घुमाता है, भूमध्य रेखा पर शून्य होता है।"]],
+    surge: [["बंगाल की खाड़ी के उत्तरी छोर पर तूफ़ानी लहरें सबसे ख़तरनाक क्यों होती हैं?", ["वहाँ पानी सबसे गर्म है", "समुद्र तल चौड़ा और उथला है, इसलिए हवा से धकेला पानी ऊपर चढ़ता है", "वहाँ चक्रवात हमेशा सबसे शक्तिशाली होते हैं"], 1, "उथले समुद्र तल पर हवा से धकेले पानी के पास ऊपर और अंदर की ओर जाने के सिवा कोई रास्ता नहीं होता।"],
+             ["किसी एक जगह आमतौर पर सबसे ज़्यादा बारिश कौन सा तूफ़ान लाता है?", ["तेज़ चलने वाला शक्तिशाली तूफ़ान", "धीमा चलने वाला तूफ़ान, चाहे कमज़ोर हो", "समुद्र में दूर का तूफ़ान"], 1, "बारिश समय के साथ जुड़ती है: रुकने वाला तूफ़ान अपनी बारिश की पट्टियाँ उसी जगह पर रखता है।"]],
+  };
+  function buildQuizzes() { for (const box of $$(".quiz[data-quiz]")) {
+    const qs = (HI() ? QUIZ_HI : QUIZ)[box.dataset.quiz]; if (!qs) continue; box.hidden = false; box.textContent = "";
+    box.append(el("h3", { text: HI() ? "छोटी क्विज़" : "Quick quiz" }));
     qs.forEach(([q, opts, ok, why]) => {
       const f = el("div", { class: "qz" }, [el("p", { class: "qz-q", text: q })]), fb = el("p", { class: "qz-fb", "aria-live": "polite" });
       opts.forEach((o, i) => { const b = el("button", { type: "button", class: "qz-o", text: o });
         b.addEventListener("click", () => { for (const x of $$(".qz-o", f)) x.disabled = true; b.classList.add(i === ok ? "right" : "wrong"); $$(".qz-o", f)[ok].classList.add("right");
-          fb.textContent = `${i === ok ? "Right! " : "Not quite. "}${why}`; }); f.append(b); });
+          fb.textContent = `${i === ok ? (HI() ? "सही! " : "Right! ") : (HI() ? "पूरी तरह नहीं। " : "Not quite. ")}${why}`; }); f.append(b); });
       f.append(fb); box.append(f);
     });
-  }
+  } }
+  buildQuizzes();
 
   // ---------------------------------------------------------------- the ingredients game
   const g = { sst: $("#g-sst"), rh: $("#g-rh"), sh: $("#g-sh"), lat: $("#g-lat") };
@@ -183,14 +221,14 @@
     $("#g-sst-o").textContent = `${sst} °C`; $("#g-rh-o").textContent = `${rh}%`; $("#g-sh-o").textContent = `${sh} m/s`; $("#g-lat-o").textContent = `${lat}°`;
     const f1 = clamp((sst - 25.5) / 3), f2 = clamp((rh - 40) / 35), f3 = clamp((25 - sh) / 15), f4 = lat < 5 ? lat / 5 * 0.5 : lat > 25 ? clamp((35 - lat) / 10) : 1;
     const pot = f1 * f2 * f3 * f4;
-    $("#g-verdict").textContent = pot >= 0.6 ? "Yes: a strong cyclone could form and keep growing." : pot >= 0.3 ? "Maybe: a weak storm could form, but it may struggle." : "Unlikely: a cyclone would not form or would fall apart.";
+    $("#g-verdict").textContent = pot >= 0.6 ? T("gm.yes", "Yes: a strong cyclone could form and keep growing.") : pot >= 0.3 ? T("gm.maybe", "Maybe: a weak storm could form, but it may struggle.") : T("gm.no", "Unlikely: a cyclone would not form or would fall apart.");
     $("#g-verdict").className = `g-verdict ${pot >= 0.6 ? "go" : pot >= 0.3 ? "maybe" : "no"}`;
     const why = $("#g-why"); why.textContent = "";
     const item = (good, t) => why.append(el("li", { class: good ? "ok" : "no", text: `${good ? "✓" : "✗"} ${t}` }));
-    item(sst >= 26.5, sst >= 26.5 ? "The sea is warm enough to fuel a storm." : "The sea is too cool: below about 26.5 °C there is not enough heat and moisture.");
-    item(rh >= 60, rh >= 60 ? "The air is moist enough." : "Dry air would be pulled in and choke the thunderstorms.");
-    item(sh <= 12, sh <= 12 ? "Shear is weak, so the storm can stay upright." : "Strong shear tilts the storm and blows its top away.");
-    item(lat >= 5 && lat <= 25, lat < 5 ? "Too close to the equator: the Earth's spin cannot start the swirl." : lat > 25 ? "Far from the tropics, the sea usually gets too cool." : "Far enough from the equator for the Earth's spin to start a swirl.");
+    item(sst >= 26.5, sst >= 26.5 ? T("gm.sst1", "The sea is warm enough to fuel a storm.") : T("gm.sst0", "The sea is too cool: below about 26.5 °C there is not enough heat and moisture."));
+    item(rh >= 60, rh >= 60 ? T("gm.rh1", "The air is moist enough.") : T("gm.rh0", "Dry air would be pulled in and choke the thunderstorms."));
+    item(sh <= 12, sh <= 12 ? T("gm.sh1", "Shear is weak, so the storm can stay upright.") : T("gm.sh0", "Strong shear tilts the storm and blows its top away."));
+    item(lat >= 5 && lat <= 25, lat < 5 ? T("gm.lat0", "Too close to the equator: the Earth's spin cannot start the swirl.") : lat > 25 ? T("gm.lat2", "Far from the tropics, the sea usually gets too cool.") : T("gm.lat1", "Far enough from the equator for the Earth's spin to start a swirl."));
     // the storm picture: bigger and rounder when conditions are good, tilted by shear
     const svg = $("#g-art"), R = 25 + 70 * pot, tilt = Math.min(60, sh * 1.5), arms = pot > 0.15 ? 3 : 0;
     let h = `<rect x="0" y="180" width="300" height="40" fill="${sst >= 26.5 ? "#2f8fc4" : "#7fa6bf"}" opacity=".6"/>`;
@@ -205,5 +243,6 @@
     $$("[data-preset]").forEach((b) => b.addEventListener("click", () => { const v = P[b.dataset.preset]; [g.sst.value, g.rh.value, g.sh.value, g.lat.value] = v; game(); }));
     game(); }
 
+  document.addEventListener("langchange", () => { buildQuizzes(); game(); if (log.childElementCount) { log.textContent = ""; } if (!panel.hidden) open(); });
   window.TCGuide = { open, tour, ask };
 })();

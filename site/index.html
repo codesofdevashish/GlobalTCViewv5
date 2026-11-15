@@ -73,11 +73,14 @@
       </div>
       <ul class="glance" id="t-glance" aria-label="At a glance"></ul>
     </div>
+    <figure class="hero-globe">
+      <div id="t-globe" class="t-globe" role="img" aria-label="Live winds near the surface and today's storms"></div>
+      <figcaption><b data-i18n="hero.live">Live winds right now</b> <span data-i18n="hero.cap">Near the surface. Drag to turn, select to open the live map.</span></figcaption>
+    </figure>
 
   </div>
 
   <div class="today-grid">
-    <div class="today-col">
     <section class="place" aria-labelledby="place-h">
       <h2 id="place-h" data-i18n="place.h">Is a cyclone heading for you?</h2>
       <p class="muted" data-i18n="place.p">Choose your town, or let your browser find you. Your place is kept only on this device.</p>
@@ -89,11 +92,6 @@
       <div id="place-result" class="place-result" aria-live="polite"></div>
       <div id="towncast" class="towncast" hidden></div>
     </section>
-        <figure class="hero-globe card-globe">
-      <div id="t-globe" class="t-globe" role="img" aria-label="Live winds near the surface and today's storms"></div>
-      <figcaption><b data-i18n="hero.live">Live winds right now</b> <span data-i18n="hero.cap">Near the surface. Drag to turn, select to open the live map.</span></figcaption>
-    </figure>
-    </div>
     <section class="storms-today" aria-labelledby="st-h">
       <h2 id="st-h" data-i18n="st.h">Storms right now</h2>
       <ol id="t-storms" class="rows"></ol>
@@ -127,35 +125,80 @@
   </section>
 
   <p class="today-about"><span data-i18n="ab.short">A research project, not an official warning service.</span> <a href="#about" data-i18n="ab.more">About this site, its data and methods →</a></p>
-  <footer class="site-ftr"><p><span data-i18n="ftr">GlobalTCView by Devashish, IIT Hyderabad. Data: NOAA GFS and NCEP TCVitals, NASA, IBTrACS, GHSL, World Bank. Open source.</span> <a href="feed.xml">RSS feed</a></p></footer>
+  <footer class="site-ftr"><p><span data-i18n="ftr">GlobalTCView by Devashish Prakash Singh, Department of Climate Change, IIT Hyderabad. Data: NOAA GFS and NCEP TCVitals, NASA, IBTrACS, GHSL, World Bank. Open source.</span> <a href="feed.xml">RSS feed</a></p></footer>
 </section>
 
 <!-- ======================= ABOUT -->
 <section id="view-about" class="view about" hidden aria-labelledby="about-h">
-  <h1 id="about-h">About GlobalTCView</h1>
-  <p class="lede">An open research and teaching tool that follows every tropical cyclone on Earth, rebuilt several times a day from free, public data.</p>
-  <div class="about-grid">
-    <section><h2>What it does</h2>
-      <p>For each active storm it renders the 3D flow from NOAA GFS analyses, tracks it against official advisories, shows the GEFS ensemble forecast and how well past forecasts verified, places it in the climate record (IBTrACS since 1980), and estimates who is exposed to damaging wind, extreme rain and storm surge. The live map shows the atmosphere and ocean that steer and feed storms, from two days ago to five days ahead.</p>
-      <p><strong>It is not an official warning service.</strong> For warnings, always follow your national meteorological service.</p></section>
-    <section><h2>Data</h2>
-      <ul class="about-list">
-        <li>Weather: NOAA NCEP GFS 0.25° and 1° analyses and forecasts; GEFS ensemble tracks.</li>
-        <li>Storms: NCEP TCVitals (positions and intensities from NHC, CPHC, JTWC, IMD and other centres); history from IBTrACS v04r01 (NOAA NCEI).</li>
-        <li>Ocean: NOAA GFS-Wave (WaveWatch III) wave height and direction; NOAA RTOFS surface currents via NOAA CoastWatch ERDDAP.</li>
-        <li>Exposure: GHSL GHS-POP 2025 (EU JRC); World Bank indicators; NOAA ETOPO1 elevation and depth.</li>
-        <li>Climate indices: NOAA CPC (ONI), NOAA PSL (DMI), Australian Bureau of Meteorology (MJO).</li>
-        <li>Maps: NASA Blue Marble and GIBS imagery; Natural Earth coastlines and places (public domain).</li>
-      </ul></section>
-    <section><h2>Methods and limits</h2>
-      <p>Every estimate is documented in Storm analysis (Impact method, Reading the 3D view). In short: winds from a Holland parametric profile, rain from GFS, a static surge-susceptibility index, and an experimental logistic model for rapid intensification trained on IBTrACS. Model winds at these resolutions are too weak for intense storms; exposure uses population, not buildings; nothing here models flood inundation.</p>
-      <p><button type="button" class="btn ghost" id="ab-method" data-open="method">Read the impact method</button></p></section>
-    <section><h2>Cite and reuse</h2>
-      <p>The code is open source under the MIT licence; the data keep their providers' licences. Please cite it as:</p>
-      <p class="cite">Singh, D. P. (2026). <i>GlobalTCView</i>. Zenodo. <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.24157024</a></p>
-      <p><a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener"><img src="https://zenodo.org/badge/1449072755.svg" alt="DOI 10.5281/zenodo.24157024" height="20"></a></p>
-      <p id="ab-author"></p></section>
-  </div>
+  <header class="ab-hero">
+    <p class="ab-kicker" data-i18n="abp.kicker">About the project</p>
+    <h1 id="about-h">GlobalTCView</h1>
+    <p class="lede" data-i18n="abp.lede">An open research and teaching tool that follows every tropical cyclone on Earth, rebuilt several times a day from free, public data, and explains it for everyone.</p>
+    <ul class="ab-facts">
+      <li style="--a:#ff7a59"><b data-i18n="abp.f1">All basins</b><span data-i18n="abp.f1s">every active storm worldwide</span></li>
+      <li style="--a:#ffd27a"><b data-i18n="abp.f2">3× a day</b><span data-i18n="abp.f2s">rebuilt from the latest model runs</span></li>
+      <li style="--a:#6fd0c8"><b data-i18n="abp.f3">100% open data</b><span data-i18n="abp.f3s">NOAA, NASA, IBTrACS, no logins</span></li>
+      <li style="--a:#b48cff"><b data-i18n="abp.f4">MIT licence</b><span data-i18n="abp.f4s">open source and citable (DOI)</span></li>
+    </ul>
+  </header>
+
+  <section class="ab-block" aria-labelledby="ab-what"><h2 id="ab-what" data-i18n="abp.what">What it does</h2>
+    <div class="ab-cards">
+      <article><span class="ab-ic" style="--a:#2fa3c4"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12c0-4 4-6 6-4M12 12c4 0 6 4 4 6M12 12c0 4-4 6-6 4M12 12c-4 0-6-4-4-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <h3 data-i18n="abp.c1">Every storm, in 3D</h3><p data-i18n="abp.c1p">The 3D flow of each active cyclone from NOAA GFS analyses, its track against official advisories, and its place in the climate record since 1980.</p></article>
+      <article><span class="ab-ic" style="--a:#ffb347"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-6 4 4 5-7 4 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 21h18" stroke="currentColor" stroke-width="2"/></svg></span>
+        <h3 data-i18n="abp.c2">Forecasts, checked</h3><p data-i18n="abp.c2p">The GEFS ensemble forecast for each storm, an experimental rapid-intensification guidance, and a running score of how far past forecasts were off.</p></article>
+      <article><span class="ab-ic" style="--a:#ff7a59"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 19H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.1" fill="currentColor"/></svg></span>
+        <h3 data-i18n="abp.c3">Who is exposed</h3><p data-i18n="abp.c3p">People in damaging wind, very heavy and extreme rain (IMD classes) and storm-surge-prone coast, with a five-day rain, wind and sea outlook for coastal towns.</p></article>
+      <article><span class="ab-ic" style="--a:#7bd389"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z M20 5h-7a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <h3 data-i18n="abp.c4">Learn by exploring</h3><p data-i18n="abp.c4p">A live map of the winds and oceans from two days ago to five days ahead, short lessons, a cyclone lab, quizzes and a guide, in English and Hindi.</p></article>
+    </div></section>
+
+  <section class="ab-block" aria-labelledby="ab-how"><h2 id="ab-how" data-i18n="abp.how">How it works</h2>
+    <ol class="ab-flow">
+      <li><b data-i18n="abp.s1">Public data</b><span data-i18n="abp.s1p">GFS, GEFS, WaveWatch III, RTOFS, TCVitals, IBTrACS, GHSL, NASA imagery</span></li>
+      <li><b data-i18n="abp.s2">Daily pipeline</b><span data-i18n="abp.s2p">Python on GitHub Actions: finds the storms, renders the 3D views, computes forecasts, verification, impacts and map fields</span></li>
+      <li><b data-i18n="abp.s3">Static website</b><span data-i18n="abp.s3p">GitHub Pages: three.js, d3 and CesiumJS draw everything in your browser; no server, no tracking</span></li>
+    </ol></section>
+
+  <section class="ab-block" aria-labelledby="ab-data"><h2 id="ab-data" data-i18n="abp.data">Data</h2>
+    <dl class="ab-data">
+      <div><dt data-i18n="abp.d1">Weather</dt><dd>NOAA NCEP GFS 0.25° and 1° analyses and forecasts; GEFS ensemble tracks</dd></div>
+      <div><dt data-i18n="abp.d2">Storms</dt><dd>NCEP TCVitals (NHC, CPHC, JTWC, IMD and other centres); IBTrACS v04r01 (NOAA NCEI)</dd></div>
+      <div><dt data-i18n="abp.d3">Ocean</dt><dd>NOAA GFS-Wave (WaveWatch III) waves; NOAA RTOFS currents via CoastWatch ERDDAP</dd></div>
+      <div><dt data-i18n="abp.d4">Exposure</dt><dd>GHSL GHS-POP 2025 (EU JRC); World Bank indicators; NOAA ETOPO1 elevation and depth</dd></div>
+      <div><dt data-i18n="abp.d5">Climate</dt><dd>NOAA CPC (ONI), NOAA PSL (DMI), Australian Bureau of Meteorology (MJO)</dd></div>
+      <div><dt data-i18n="abp.d6">Maps</dt><dd>NASA Blue Marble and GIBS imagery; Natural Earth coastlines and places</dd></div>
+    </dl></section>
+
+  <section class="ab-block" aria-labelledby="ab-meth"><h2 id="ab-meth" data-i18n="abp.ml">Methods and limits</h2>
+    <div class="ab-two">
+    <div class="ab-col"><h3 data-i18n="abp.m">Methods</h3><ul>
+      <li data-i18n="abp.m1">Winds from a Holland parametric profile along the official track</li>
+      <li data-i18n="abp.m2">Rain from GFS forecasts, in IMD daily classes</li>
+      <li data-i18n="abp.m3">A static storm-surge susceptibility index (onshore wind × shallow shelf × low land)</li>
+      <li data-i18n="abp.m4">Experimental rapid-intensification guidance: a logistic model trained on IBTrACS</li></ul>
+      <p><button type="button" class="btn ghost" data-open="method" data-i18n="abp.mbtn">Read the full impact method</button></p></div>
+    <div class="ab-col ab-limits"><h3 data-i18n="abp.l">Limits</h3><ul>
+      <li data-i18n="abp.l1">Model winds at these resolutions are too weak for intense storms</li>
+      <li data-i18n="abp.l2">Exposure counts people, not buildings or assets</li>
+      <li data-i18n="abp.l3">No flood inundation, tides or wave setup are modelled</li>
+      <li data-i18n="abp.l4">Not an official warning service: always follow your national meteorological service</li></ul></div>
+    </div>
+  </section>
+
+  <section class="ab-block ab-two" aria-labelledby="ab-who">
+    <div class="ab-author"><h2 id="ab-who" data-i18n="abp.who">Who made it</h2>
+      <div class="ab-person"><span class="ab-avatar" id="ab-initials" aria-hidden="true"></span>
+        <div><p class="ab-name" id="ab-name"></p><p class="ab-aff" id="ab-aff"></p></div></div>
+      <p id="ab-bio" class="ab-bio"></p><p class="ab-links" id="ab-links"></p>
+      <div class="ab-guides" id="ab-guides" hidden><h3 data-i18n="abp.guided">Guided by</h3><ul id="ab-guide-list"></ul></div></div>
+    <div class="ab-cite"><h2 data-i18n="abp.cite">Cite and reuse</h2>
+      <p data-i18n="abp.citep">Open source under the MIT licence; the data keep their providers' licences. Please cite:</p>
+      <p class="cite" id="ab-cite-text">Singh, D. P. (2026). <i>GlobalTCView</i>. Zenodo. <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.24157024</a></p>
+      <p class="ab-btns"><button type="button" class="btn" id="ab-copy" data-i18n="abp.copy">Copy citation</button> <button type="button" class="btn ghost" id="ab-bib" data-i18n="abp.bib">Copy BibTeX</button>
+        <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener" class="ab-badge"><img src="https://zenodo.org/badge/1449072755.svg" alt="DOI 10.5281/zenodo.24157024" height="20"></a></p></div>
+  </section>
 </section>
 
 <!-- ======================= LIVE MAP ======================= -->
@@ -387,7 +430,7 @@
   <article class="essay">
     <h1 id="learn-h" data-i18n="learn.h">How the atmosphere makes and moves tropical cyclones</h1>
     <p class="lede" data-i18n="learn.lede">Six short explanations, each linked to today's live map, plus an interactive lab where you can build a cyclone from its ingredients.</p>
-    <nav class="l-toc" aria-label="On this page"><a href="#l-cells">Circulation cells</a><a href="#l-walker">Walker and El Niño</a><a href="#l-tc">What a cyclone needs</a><a href="#l-game">Cyclone lab</a><a href="#l-surge">Surge and extreme rain</a><a href="#l-scale">How strong is it?</a><a href="#l-read">Reading the map</a></nav>
+    <nav class="l-toc" aria-label="On this page"><a href="#l-cells" data-i18n="toc.1">Circulation cells</a><a href="#l-walker" data-i18n="toc.2">Walker and El Niño</a><a href="#l-tc" data-i18n="toc.3">What a cyclone needs</a><a href="#l-game" data-i18n="toc.4">Cyclone lab</a><a href="#l-surge" data-i18n="toc.5">Surge and extreme rain</a><a href="#l-scale" data-i18n="toc.6">How strong is it?</a><a href="#l-read" data-i18n="toc.7">Reading the map</a></nav>
 
     <section id="l-cells" aria-labelledby="l1">
       <h2 id="l1" data-i18n="learn.h1">The three circulation cells</h2>
@@ -399,7 +442,7 @@
         by the other two; at the surface it gives the westerlies. The <strong>polar cell</strong> sinks cold air over the poles.</p>
       <p>Most tropical cyclones form on the equator side of the subtropical highs, in the moist air of the Hadley cell, and are steered by the winds around those highs.</p>
       <button type="button" class="btn" data-goto="cells">Show the cells on the live map</button>
-      <a class="see-map" href="#map?view=2d&ov=cells&level=1000&layer=pwat">See the cells and trade winds on the live map →</a>
+      <a class="see-map" href="#map?view=2d&ov=cells&level=1000&layer=pwat" data-i18n="see.cells">See the cells and trade winds on the live map →</a>
       <div class="quiz" data-quiz="cells"></div>
     </section>
 
@@ -416,7 +459,7 @@
       <p id="l-enso-now" class="now-note" hidden></p>
       <button type="button" class="btn" data-goto="walker">Show the Walker circulation</button>
       <button type="button" class="btn ghost" data-goto="nino">Show the Niño 3.4 and dipole regions</button>
-      <a class="see-map" href="#map?view=2d&ov=walker,nino&level=1000&layer=sst&lon=-150&lat=0&z=1.3">See the Walker loop over today's Pacific →</a>
+      <a class="see-map" href="#map?view=2d&ov=walker,nino&level=1000&layer=sst&lon=-150&lat=0&z=1.3" data-i18n="see.walker">See the Walker loop over today\'s Pacific →</a>
       <div class="quiz" data-quiz="walker"></div>
     </section>
 
@@ -432,24 +475,24 @@
       <p>When these come together, warm moist air rises in thunderstorms, the pressure falls, the winds speed up and draw in more moist air. In the strongest storms
         an eye forms: a calm, clear centre surrounded by the eyewall, where the winds are fiercest.</p>
       <button type="button" class="btn" data-goto="sst">Show sea surface temperature</button>
-      <a class="see-map" href="#map?view=2d&layer=sst&level=1000&lon=85&lat=12&z=1.6">See today's warm sea around India →</a> <a class="see-map" href="#map?view=3d&layer=shear&level=850">See today's wind shear →</a>
+      <a class="see-map" href="#map?view=2d&layer=sst&level=1000&lon=85&lat=12&z=1.6" data-i18n="see.sst">See today\'s warm sea around India →</a> <a class="see-map" href="#map?view=3d&layer=shear&level=850" data-i18n="see.shear">See today\'s wind shear →</a>
       <div class="quiz" data-quiz="tc"></div>
     </section>
 
     <section id="l-game" aria-labelledby="lg-h">
-      <h2 id="lg-h">Could a cyclone form here? Try it</h2>
-      <p>Move the sliders and watch what happens. These are the conditions forecasters check every day.</p>
+      <h2 id="lg-h" data-i18n="learn.hg">Could a cyclone form here? Try it</h2>
+      <p data-i18n="lg.intro">Move the sliders and watch what happens. These are the conditions forecasters check every day.</p>
       <div class="game">
         <div class="g-controls">
-          <label>Sea temperature <output id="g-sst-o"></output><input type="range" id="g-sst" min="20" max="32" step="0.5" value="27"></label>
-          <label>Humidity in the middle of the atmosphere <output id="g-rh-o"></output><input type="range" id="g-rh" min="10" max="100" step="5" value="65"></label>
-          <label>Vertical wind shear <output id="g-sh-o"></output><input type="range" id="g-sh" min="0" max="40" step="1" value="12"></label>
-          <label>Distance from the equator <output id="g-lat-o"></output><input type="range" id="g-lat" min="0" max="35" step="1" value="12"></label>
-          <p class="g-presets">Try a real setting:
-            <button type="button" class="chip-l" data-preset="bob">Bay of Bengal, October</button>
-            <button type="button" class="chip-l" data-preset="arab">Arabian Sea, monsoon</button>
-            <button type="button" class="chip-l" data-preset="eq">On the equator</button>
-            <button type="button" class="chip-l" data-preset="cold">Cool sea</button></p>
+          <label><span data-i18n="g.sst">Sea temperature</span> <output id="g-sst-o"></output><input type="range" id="g-sst" min="20" max="32" step="0.5" value="27"></label>
+          <label><span data-i18n="g.rh">Humidity in the middle of the atmosphere</span> <output id="g-rh-o"></output><input type="range" id="g-rh" min="10" max="100" step="5" value="65"></label>
+          <label><span data-i18n="g.sh">Vertical wind shear</span> <output id="g-sh-o"></output><input type="range" id="g-sh" min="0" max="40" step="1" value="12"></label>
+          <label><span data-i18n="g.lat">Distance from the equator</span> <output id="g-lat-o"></output><input type="range" id="g-lat" min="0" max="35" step="1" value="12"></label>
+          <p class="g-presets"><span data-i18n="g.try">Try a real setting:</span>
+            <button type="button" class="chip-l" data-preset="bob" data-i18n="g.p1">Bay of Bengal, October</button>
+            <button type="button" class="chip-l" data-preset="arab" data-i18n="g.p2">Arabian Sea, monsoon</button>
+            <button type="button" class="chip-l" data-preset="eq" data-i18n="g.p3">On the equator</button>
+            <button type="button" class="chip-l" data-preset="cold" data-i18n="g.p4">Cool sea</button></p>
         </div>
         <div class="g-stage" aria-live="polite">
           <svg viewBox="0 0 300 220" id="g-art" role="img" aria-label="A storm that grows or falls apart with the conditions"></svg>
@@ -460,7 +503,7 @@
     </section>
 
     <section id="l-surge" aria-labelledby="l6">
-      <h2 id="l6">Storm surge and extreme rain: what kills in a cyclone</h2>
+      <h2 id="l6" data-i18n="learn.h6">Storm surge and extreme rain: what kills in a cyclone</h2>
       <p>Wind gets the headlines, but most cyclone deaths come from water. <strong>Storm surge</strong> is the sea pushed onshore by a storm. The wind drags on the sea surface, and over deep water the extra water can sink and spread out. Over a <strong>shallow continental shelf</strong> it has nowhere to go but up and inland, so the same wind raises the sea far more. Low pressure lifts the sea a little too (about 1 cm for every hectopascal). Surge is worst to the right of the track in the Northern Hemisphere, where the winds blow onshore, and when it arrives at high tide.</p>
       <svg viewBox="0 0 640 230" class="ldiag" role="img" aria-label="Wind blowing towards the coast piles water up over a shallow shelf, much more than over a steep one">
   <defs><marker id="sg-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 10,5 0,10z" fill="currentColor"/></marker></defs>
@@ -475,7 +518,7 @@
 </svg>
       <p>This is why the head of the Bay of Bengal, with its wide, shallow shelf and low delta, has seen the deadliest surges on Earth, and why the surge index in Storm analysis multiplies onshore wind, shelf shallowness and how low the land is. It ranks coast by susceptibility; it does not forecast water levels.</p>
       <p><strong>Extreme rain</strong> depends less on a storm's strength than on how long it stays. Rainbands drop heavy rain wherever they pass, so a <strong>slow-moving</strong> or stalled storm, even a weak one, can drop a month's rain in a day or two, and moist air pushed up hills adds more. IMD calls 64.5 mm in a day heavy, 115.6 mm very heavy and 204.5 mm extremely heavy: these are the classes in the Impact view's rain maps.</p>
-      <a class="see-map" href="#map?view=2d&layer=rain&t=24&level=1000">See tomorrow's 6-hour rain on the live map →</a>
+      <a class="see-map" href="#map?view=2d&layer=rain&t=24&level=1000" data-i18n="see.rain">See tomorrow\'s 6-hour rain on the live map →</a>
       <div class="quiz" data-quiz="surge"></div>
     </section>
 

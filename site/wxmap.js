@@ -6,16 +6,16 @@
   const DIRS = ["north", "north-northeast", "northeast", "east-northeast", "east", "east-southeast", "southeast", "south-southeast",
                 "south", "south-southwest", "southwest", "west-southwest", "west", "west-northwest", "northwest", "north-northwest"];
   const RAMPS = {
-    speed: { unit: "km/h", lo: 0, hi: 220, f: (x) => x * 3.6, stops: ["#24415c", "#2e6f9e", "#2fa39a", "#8cc63f", "#f2d43d", "#f28c28", "#d9342b", "#a31d6a"] },
-    pwat:  { unit: "mm", lo: 0, hi: 70, f: (x) => x, stops: ["#6b4b2a", "#a98b5b", "#d9d2b8", "#7cc4c8", "#2f8fc4", "#3456b0", "#5b2aa3"] },
-    rh:    { unit: "%", lo: 0, hi: 100, f: (x) => x, stops: ["#8a5a2b", "#c9a45c", "#e8e0b0", "#86c28b", "#2f9a8f", "#2a5fa8"] },
-    sst:   { unit: "°C", lo: 0, hi: 32, f: (x) => x, stops: ["#2b2a6b", "#2e5aa8", "#2fa3c4", "#5cc48a", "#d9d24a", "#f29a3a", "#d9342b"] },
-    tmp:   { unit: "°C", lo: -40, hi: 35, f: (x) => x, stops: ["#3b2a8a", "#2e5aa8", "#2fa3c4", "#8cc63f", "#f2d43d", "#f28c28", "#c8372d"] },
+    speed: { unit: "km/h", lo: 0, hi: 220, f: (x) => x * 3.6, stops: ["#16213f", "#23447a", "#2b74ad", "#2fa3a8", "#7cc46a", "#e6d84a", "#f28c28", "#d9342b", "#8e1f5e"] },
+    pwat:  { unit: "mm", lo: 0, hi: 70, f: (x) => x, stops: ["#7b5a2e", "#c8a86a", "#efe6c4", "#8fd1c4", "#2fa3b8", "#2a62b0", "#3b2f8f", "#7a2a8c"] },
+    rh:    { unit: "%", lo: 0, hi: 100, f: (x) => x, stops: ["#6e3f1a", "#b5783a", "#e2c48b", "#e9f0c9", "#9fd08a", "#3f9a55", "#155f3a"] },
+    sst:   { unit: "°C", lo: 0, hi: 32, f: (x) => x, stops: ["#08306b", "#2171b5", "#6baed6", "#c6dbef", "#fee0b6", "#fdae61", "#f46d43", "#d73027", "#7f0000"] },
+    tmp:   { unit: "°C", lo: -40, hi: 35, f: (x) => x, stops: ["#3b4cc0", "#6f92f3", "#aac7fd", "#dddcdc", "#f7b89c", "#e7745b", "#b40426"] },
     vort:  { unit: "×10⁻⁵ s⁻¹", lo: -20, hi: 20, f: (x) => x, stops: ["#2a5fa8", "#6fa8dc", "#e9eef2", "#f2a07a", "#c8372d"] },
     shear: { unit: "m/s", lo: 0, hi: 40, f: (x) => x, stops: ["#2e8b57", "#9bd36a", "#f2e14a", "#f29a3a", "#d9342b", "#8b1a4a"] },
     cape:  { unit: "J/kg", lo: 0, hi: 4000, f: (x) => x, stops: ["#24415c", "#4f7a8c", "#d9d24a", "#f29a3a", "#d9342b", "#8b2a8a"] },
-    hs:    { unit: "m", lo: 0, hi: 12, f: (x) => x, stops: ["#1d3b6e", "#2f6fc4", "#2fa3c4", "#7fd4a8", "#f2e14a", "#f29a3a", "#d9342b", "#7a1430"] },
-    curspd:{ unit: "m/s", lo: 0, hi: 2, f: (x) => x, stops: ["#102a43", "#1f5f8b", "#2fa3c4", "#9be26a", "#f4e04a", "#f2603a"] },
+    hs:    { unit: "m", lo: 0, hi: 12, f: (x) => x, stops: ["#0b2545", "#13497a", "#1f7bb6", "#35b0c9", "#8fe0d6", "#f2f0a8", "#f2a65a", "#c8372d", "#5e0f2a"] },
+    curspd:{ unit: "m/s", lo: 0, hi: 2, f: (x) => x, stops: ["#0a1f2e", "#0f4c5c", "#16807f", "#4fbf9f", "#bde68f", "#fff3a0", "#ffffff"] },
     rain:  { unit: "mm", lo: 0, hi: 60, f: (x) => x, stops: ["#bfe3f2", "#6fb8e0", "#2f6fc4", "#5b3fb0", "#b03aa8", "#ff5fc0"] },
   };
   const FLOW = { lo: 0, hi: 200, stops: ["#9fd4ff", "#62d2c6", "#9be26a", "#f4e04a", "#f7a43a", "#f2603a", "#e0398f", "#ff8be0"] };   // streamline colour, km/h
@@ -406,7 +406,7 @@
       for (let t = 0; t < 20; t++) {
         const a = Math.random() * 2 * Math.PI, r = Math.sqrt(Math.random()) * R * 0.97;
         const ll = proj.invert([W / 2 + r * Math.cos(a), H / 2 + r * Math.sin(a)]);
-        if (ll) { const life = 70 + Math.floor(Math.random() * 50); return { lon: ll[0], lat: ll[1], age: first ? Math.floor(Math.random() * life) : 0, life }; }
+        if (ll) { const life = 120 + Math.floor(Math.random() * 90); return { lon: ll[0], lat: ll[1], age: first ? Math.floor(Math.random() * life) : 0, life }; }
       }
       return { lon: 0, lat: 0, age: 0, life: 80 };
     }
@@ -421,9 +421,9 @@
       const mode = st.flow, U = mode === "waves" ? S.wu : mode === "currents" ? S.cu : l.u, V = mode === "waves" ? S.wv : mode === "currents" ? S.cv : l.v;
       if (!U) return;
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      fctx.globalCompositeOperation = "destination-in"; fctx.fillStyle = "rgba(0,0,0,0.94)"; fctx.fillRect(0, 0, W, H);
+      fctx.globalCompositeOperation = "destination-in"; fctx.fillStyle = "rgba(0,0,0,0.965)"; fctx.fillRect(0, 0, W, H);
       fctx.globalCompositeOperation = "source-over"; fctx.lineWidth = 1.4; fctx.lineCap = "round";
-      const sp = 0.02 / st.k, bins = Array.from({ length: NBIN }, () => []);
+      const sp = 0.008 / st.k, bins = Array.from({ length: NBIN }, () => []), mono = st.scalar && st.scalar !== "none";
       for (const p of parts) {
         let u = sample(U, p.lon, p.lat), v = sample(V, p.lon, p.lat), shade;
         if (!isFinite(u) || ++p.age > p.life || !visible(p.lon, p.lat)) { Object.assign(p, spawn(false)); continue; }
@@ -437,7 +437,7 @@
       }
       for (let i = 0; i < NBIN; i++) { const q = bins[i]; if (!q.length) continue;
         fctx.beginPath(); for (let k = 0; k < q.length; k += 4) { fctx.moveTo(q[k], q[k + 1]); fctx.lineTo(q[k + 2], q[k + 3]); }
-        fctx.strokeStyle = (isLight() ? binColorLight : binColor)[i]; fctx.stroke(); }
+        fctx.strokeStyle = mono ? (isLight() ? `rgba(20,36,50,${0.45 + 0.03 * i})` : `rgba(255,255,255,${0.5 + 0.03 * i})`) : (isLight() ? binColorLight : binColor)[i]; fctx.stroke(); }
     }
     if (!reduce) raf = requestAnimationFrame(tick);
     document.addEventListener("visibilitychange", () => { running = !document.hidden; });
@@ -485,7 +485,7 @@
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      get: (k) => st[k], monoFlow: () => !!(st.scalar && st.scalar !== "none"), setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
       focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },

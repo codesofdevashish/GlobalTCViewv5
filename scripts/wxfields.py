@@ -152,16 +152,21 @@ def build(public, latest=None, sess=None):
     CUR = currents(sess)
     plan = [(-48, cyc0 - pd.Timedelta(hours=48), 0), (-24, cyc0 - pd.Timedelta(hours=24), 0), (0, cyc0, 0)] + [(fh, cyc0, fh) for fh in (24, 48, 72, 96, 120)]
     for i, (off, cyc, fh) in enumerate(plan):
-        f = f0 if off == 0 else fetch_messages(cyc, fh, want(fh), sess)
-        if not f: continue
-        f = dict(f); f["_waves"] = waves(cyc, fh, sess)
-        valid = cyc + pd.Timedelta(hours=fh)
-        if CUR:                                                                 # the nearest daily current field, within 12 h
-            tn = min(CUR, key=lambda x: abs(x - valid))
-            if abs(tn - valid) <= pd.Timedelta(hours=12): f["_currents"] = CUR[tn]
-        write_time(f, len(times), out)
-        times.append(dict(time=(cyc + pd.Timedelta(hours=fh)).strftime("%Y-%m-%dT%H:%MZ"), offset_h=off, kind="analysis" if fh == 0 else "forecast"))
-        print(f"  weather fields: {'analysis' if fh == 0 else 'forecast'} {off:+d} h ({len(f)} messages)")
+        try:                                                                    # one failing step must not lose the others
+            f = f0 if off == 0 else fetch_messages(cyc, fh, want(fh), sess)
+            if not f: print(f"::warning::weather fields: no data for {off:+d} h"); continue
+            f = dict(f)
+            try: f["_waves"] = waves(cyc, fh, sess)
+            except Exception as e: print(f"::warning::weather fields: waves skipped at {off:+d} h ({type(e).__name__}: {e})"); f["_waves"] = None
+            valid = cyc + pd.Timedelta(hours=fh)
+            if CUR:                                                             # the nearest daily current field, within 12 h
+                tn = min(CUR, key=lambda x: abs(x - valid))
+                if abs(tn - valid) <= pd.Timedelta(hours=12): f["_currents"] = CUR[tn]
+            write_time(f, len(times), out)
+            times.append(dict(time=(cyc + pd.Timedelta(hours=fh)).strftime("%Y-%m-%dT%H:%MZ"), offset_h=off, kind="analysis" if fh == 0 else "forecast"))
+            print(f"  weather fields: {'analysis' if fh == 0 else 'forecast'} {off:+d} h ({len(f)} messages)")
+        except Exception as e:
+            print(f"::warning::weather fields: step {off:+d} h failed ({type(e).__name__}: {e})")
     meta = dict(cycle=cyc0.strftime("%Y-%m-%dT%H:%MZ"), times=times, now=[t["offset_h"] for t in times].index(0) if any(t["offset_h"] == 0 for t in times) else 0,
                 levels=LEVELS, sfc=SFC, lev=LEV, grid=dict(ny=NY, nx=NX, lat0=90, lon0=0, d=1),
                 ranges=dict({k: list(v) for k, v in RANGES.items()}, **{f"hgt{p}": list(HGT_R[p]) for p in LEVELS}, **{f"tmp{p}": list(TMP_R[p]) for p in LEVELS}),
