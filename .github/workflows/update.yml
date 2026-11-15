@@ -2,7 +2,7 @@ name: Daily cyclone videos
 
 on:
   schedule:
-    - cron: "40 6 * * *"      # every day 06:40 UTC (00z GFS + TCVitals are available by then)
+    - cron: "40 6,14,22 * * *"   # three times a day (06:40, 14:40, 22:40 UTC), after each GFS cycle is available
   workflow_dispatch:           # "Run workflow" button for a manual update
 
 permissions:
