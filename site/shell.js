@@ -110,6 +110,7 @@
     const lon = top ? top.lon : 88, lat = top ? top.lat : 15, d = new Date(Date.now() - 864e5), day = d.toISOString().slice(0, 10);
     const la0 = Math.max(-80, lat - 9), la1 = Math.min(80, lat + 9);
     const lc = Math.max(-164, Math.min(164, ((lon + 540) % 360) - 180)), lo0 = lc - 16, lo1 = lc + 16;   // stay within -180..180 near the date line
+    if (Math.abs(((lon + 540) % 360) - 180) > 150) return;     // near the date line the daily composite is often black: keep the illustration
     const url = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=VIIRS_SNPP_CorrectedReflectance_TrueColor"
       + `&STYLES=&CRS=EPSG:4326&BBOX=${la0},${lo0},${la1},${lo1}&WIDTH=1600&HEIGHT=900&FORMAT=image/jpeg&TIME=${day}`;
     const probe = new Image();
@@ -530,7 +531,7 @@
   if (window.I18N) {
     for (const [k, v] of Object.entries(window.I18N.LANGS)) langSel.append(el("option", { value: k, text: v }));
     langSel.value = window.I18N.lang; langSel.addEventListener("change", () => window.I18N.set(langSel.value));
-    document.addEventListener("langchange", () => { if (wx) wx.set("labels", $("#ly-labels").checked); today(); if (LAST_PLACE) assess(LAST_PLACE); levelLabel(); legend(); const m = wx && wx.meta(); if (m) $("#wx-time").textContent = t("map.time", { t: when(toMs(m.cycle)) }); });
+    document.addEventListener("langchange", () => { if (wx) wx.set("labels", $("#ly-labels").checked); today(); glance(); if (LAST_PLACE) assess(LAST_PLACE); levelLabel(); legend(); const m = wx && wx.meta(); if (m) $("#wx-time").textContent = t("map.time", { t: when(toMs(m.cycle)) }); });
     window.I18N.apply();
   } else langSel.hidden = true;
 

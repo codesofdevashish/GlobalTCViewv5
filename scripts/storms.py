@@ -28,14 +28,17 @@ def _urls(cyc):
             yield f"{base}/{run}.{d}/{h}/atmos/{run}.t{h}z.syndata.tcvitals.tm00"
 
 def fetch_cycle(cyc, sess):
+    """The cycle's TCVitals text; "" when the file exists but is empty (no storms anywhere); None when it is missing."""
+    empty = False
     for u in _urls(cyc):
         try:
             r = sess.get(u, timeout=30)
-            if r.status_code == 200 and r.text.strip():
-                return r.text
+            if r.status_code == 200:
+                if r.text.strip() and "<html" not in r.text[:200].lower(): return r.text
+                if not r.text.strip(): empty = True                   # published, but no storms in this cycle
         except requests.RequestException:
             pass
-    return None
+    return "" if empty else None
 
 def _ll(tok):
     v = int(tok[:-1]) / 10.0
@@ -123,8 +126,10 @@ def find_storms(lookback_days=8, include_invests=False, now=None, sess=None, inv
             continue
         latest = c
         rows += parse(txt)
-    if not rows or latest is None:
+    if latest is None:
         return [], [], latest
+    if not rows:
+        return [], [], latest                                          # no storms in the whole window
     df = pd.DataFrame(rows).drop_duplicates(["sid", "time"], keep="last")
     df["year"] = df.time.dt.year
     storms, ended = [], []

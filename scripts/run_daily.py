@@ -373,7 +373,7 @@ def main():
         try: extra[k] = fn()
         except Exception: traceback.print_exc()
     try:
-        wm = W.build(a.public, latest)                                      # global fields for the live map (8 time steps)
+        wm = W.build(a.public, None)                                        # global fields for the live map: always the newest GFS cycle
         if wm: TC.build(a.public, pd.Timestamp(wm["cycle"].replace("Z", "")))   # 5-day rain, wind and sea for coastal towns
     except Exception: traceback.print_exc()
     if VERIFY: extra["verification"] = V.season(VERIFY)
