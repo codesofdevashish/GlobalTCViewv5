@@ -87,7 +87,7 @@
           else if (sea) { shade = Math.hypot(u, v) / 2 * FLOW.hi; u *= 14; v *= 14; }
           q.lon += u * sp / Math.max(0.2, Math.cos(q.lat * D)); q.lat = Math.max(-85, Math.min(85, q.lat + v * sp)); q.spd = shade;
           q.tr.copyWithin(3, 0, (TL - 1) * 3); q.tr.set(ll2v(q.lat, q.lon, r), 0);
-          const c = st.scalar && st.scalar !== "none" ? WHITE : fc[Math.max(0, Math.min(255, Math.round(q.spd / FLOW.hi * 255)))], life = Math.min(1, q.age / 12, (q.life - q.age) / 12);
+          const c = st.flowColor === false ? WHITE : fc[Math.max(0, Math.min(255, Math.round(q.spd / FLOW.hi * 255)))], life = Math.min(1, q.age / 12, (q.life - q.age) / 12);
           for (let j = 0; j < TL - 1; j++) {
             const o = (i * (TL - 1) + j) * 6, f0 = (1 - j / (TL - 1)) * life * emph, f1 = (1 - (j + 1) / (TL - 1)) * life * emph;
             S.pos[o] = q.tr[j * 3]; S.pos[o + 1] = q.tr[j * 3 + 1]; S.pos[o + 2] = q.tr[j * 3 + 2];

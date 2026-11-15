@@ -57,7 +57,7 @@
     el.append(base, flow);
     const bctx = base.getContext("2d"), fctx = flow.getContext("2d");
     const st = { level: 850, wind: true, scalar: "speed", contours: true, storms: true, cells: false, walker: false, nino: false,
-                 rot: [-80, -12], k: 1, meta: null, flow: "wind", ocean: false, fc: null, towns: [], showTowns: false, sel: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
+                 rot: [-80, -12], k: 1, meta: null, flowColor: true, flow: "wind", ocean: false, fc: null, towns: [], showTowns: false, sel: null, surf: null, lev: {}, landF: null, storms: [], climate: null, dragging: false };
     let W = 0, H = 0, R = 0, dpr = 1;
     const proj = d3.geoOrthographic().clipAngle(90).precision(0.6);
     const path = d3.geoPath(proj, bctx);
@@ -423,7 +423,7 @@
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       fctx.globalCompositeOperation = "destination-in"; fctx.fillStyle = "rgba(0,0,0,0.965)"; fctx.fillRect(0, 0, W, H);
       fctx.globalCompositeOperation = "source-over"; fctx.lineWidth = 1.4; fctx.lineCap = "round";
-      const sp = 0.008 / st.k, bins = Array.from({ length: NBIN }, () => []), mono = st.scalar && st.scalar !== "none";
+      const sp = 0.008 / st.k, bins = Array.from({ length: NBIN }, () => []), mono = !st.flowColor, edged = st.flowColor && st.scalar && st.scalar !== "none";
       for (const p of parts) {
         let u = sample(U, p.lon, p.lat), v = sample(V, p.lon, p.lat), shade;
         if (!isFinite(u) || ++p.age > p.life || !visible(p.lon, p.lat)) { Object.assign(p, spawn(false)); continue; }
@@ -435,8 +435,13 @@
         const b = proj([p.lon, p.lat]); if (!a || !b || Math.abs(a[0] - b[0]) > 30) continue;
         bins[binOf(shade)].push(a[0], a[1], b[0], b[1]);
       }
+      if (edged) {                                            // a thin dark (or light) edge keeps coloured lines visible on any colour layer
+        fctx.beginPath(); for (const q of bins) for (let k = 0; k < q.length; k += 4) { fctx.moveTo(q[k], q[k + 1]); fctx.lineTo(q[k + 2], q[k + 3]); }
+        fctx.lineWidth = 2.6; fctx.strokeStyle = isLight() ? "rgba(255,255,255,.35)" : "rgba(4,12,22,.32)"; fctx.stroke(); fctx.lineWidth = 1.8;
+      }
       for (let i = 0; i < NBIN; i++) { const q = bins[i]; if (!q.length) continue;
         fctx.beginPath(); for (let k = 0; k < q.length; k += 4) { fctx.moveTo(q[k], q[k + 1]); fctx.lineTo(q[k + 2], q[k + 3]); }
+        if (!edged) fctx.lineWidth = 1.4;
         fctx.strokeStyle = mono ? (isLight() ? `rgba(20,36,50,${0.45 + 0.03 * i})` : `rgba(255,255,255,${0.5 + 0.03 * i})`) : (isLight() ? binColorLight : binColor)[i]; fctx.stroke(); }
     }
     if (!reduce) raf = requestAnimationFrame(tick);
@@ -485,7 +490,7 @@
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], monoFlow: () => !!(st.scalar && st.scalar !== "none"), setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      get: (k) => st[k], monoFlow: () => !st.flowColor, setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
       focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },

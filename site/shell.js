@@ -323,6 +323,7 @@
     if (r.value !== "wind") { const sc = r.value === "waves" ? "hs" : "curspd"; const rr = $(`input[name="scalar"][value="${sc}"]`); if (rr && !rr.checked) { rr.checked = true; rr.dispatchEvent(new Event("change")); } }
     legend();
   }));
+  $("#ly-flowcol").addEventListener("change", (e) => { both((m) => m.set("flowColor", e.target.checked)); legend(); });
   $("#ly-labels").addEventListener("change", (e) => both((m) => m.set("labels", e.target.checked)));
   $$('input[name="scalar"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) { both((m) => m.set("scalar", r.value)); legend(); } }));
   $$(".chip[data-ov]").forEach((b) => b.addEventListener("click", async () => {
@@ -341,11 +342,11 @@
     const F = window.WxMap.FLOW, s = wx.get("scalar"), R = wx.rampFor ? wx.rampFor(s) : window.WxMap.RAMPS[s];
     const unitK = window.I18N && window.I18N.lang === "hi" ? "किमी/घंटा" : "km/h";
     const fl = wx.get("flow"), mono = wx.monoFlow ? wx.monoFlow() : false;
-    if (R) box.append(...bar(t(s === "speed" ? "lg.speed" : `lg.${s}`), R.stops, R.lo, R.hi, s === "speed" ? unitK : R.unit));
+    if (R) box.append(...bar(t(s === "speed" ? "lg.speedbg" : `lg.${s}`), R.stops, R.lo, R.hi, s === "speed" ? unitK : R.unit));
     if (wx.get("wind") && mono) box.append(el("p", { class: "note", text: t(fl === "waves" ? "lg.monowaves" : fl === "currents" ? "lg.monocur" : "lg.mono") }));
     else if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
     else if (wx.get("wind") && fl === "currents") box.append(...bar(t("lg.flcur"), F.stops, 0, 2, "m/s"));
-    else if (wx.get("wind")) box.append(...bar(t("lg.flow"), F.stops, F.lo, F.hi, unitK));
+    else if (wx.get("wind")) box.append(...bar(t(R ? "lg.flow2" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
     const p = wx.levels()[+$("#lv").value];
     if (wx.get("contours")) box.append(el("p", { class: "note", text: p === 1000 ? t("lg.iso") : t("lg.hgt", { p, s: p >= 700 ? 30 : p >= 500 ? 60 : 120 }) }));
     if (MODE === "3d" && wx3) box.append(el("p", { class: "note", text: t("lg.3d", { x: wx3.get("mode") === "stack" ? 75 : 38 }) }));
