@@ -1,0 +1,69 @@
+name: Live map (newest GFS)
+
+# Refreshes only the live map and the town forecasts from the newest NOAA GFS run, four times a day,
+# about 4 hours after each run (00, 06, 12, 18 UTC) once NOAA has published it. Everything else on the site
+# is taken from the latest full build, so a slow or failed video build can never hold the map back.
+on:
+  schedule:
+    - cron: "15 4,10,16,22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install (only what the map needs)
+        run: pip install numpy pandas requests eccodes
+
+      - name: Get the latest full build of the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh run list --workflow update.yml --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          if [ -z "$RUN" ]; then echo "::error::no successful full build yet: run 'Daily cyclone videos' once first"; exit 1; fi
+          gh run download "$RUN" -n site-build -D public
+          echo "using the site from run $RUN"
+
+      - name: Newest GFS fields and town forecasts
+        run: |
+          python - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          import pandas as pd, wxfields as W, towncast as TC
+          m = W.build("public", None)
+          if not m: sys.exit("no new GFS fields: keeping the published site unchanged")
+          TC.build("public", pd.Timestamp(m["cycle"].replace("Z", "")))
+          print("live map now shows GFS", m["cycle"])
+          PY
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+          retention-days: 1
+
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
