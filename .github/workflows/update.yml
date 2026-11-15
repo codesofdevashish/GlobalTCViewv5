@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: pages
@@ -87,6 +88,13 @@ jobs:
           rm -rf work
           find . -name "*.nc" -o -name "*.grb2" | xargs -r rm -f
           du -sh public
+
+      - name: Keep a copy of the built site for the fast live-map refresh
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-build
+          path: public
+          retention-days: 7
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v5
