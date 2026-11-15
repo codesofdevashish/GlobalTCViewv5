@@ -358,3 +358,7 @@ body[data-view="today"] { overflow-x: hidden; }
 /* About: centred, with breathing room */
 .about { max-width: 1120px; margin: 0 auto; padding: clamp(1.2rem, 3vw, 2rem) clamp(1rem, 3vw, 2rem) 3.5rem; }
 .wx-time .stale { display: block; color: #ffb35c; font-weight: 600; margin-top: .2rem; }
+/* hero background: the bundled orbital view; keep the horizon and the Bay of Bengal in view */
+.today .hero-bg { object-position: 62% 78%; filter: none; }
+.today .hero::before { background: linear-gradient(90deg, rgba(3, 8, 18, .88) 0%, rgba(3, 8, 18, .62) 40%, rgba(3, 8, 18, .18) 70%, rgba(3, 8, 18, .05) 100%),
+  linear-gradient(0deg, rgba(3, 8, 18, .55), transparent 28%); }

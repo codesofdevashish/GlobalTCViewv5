@@ -539,7 +539,7 @@
   diagrams(); route();
   getJSON("data/storms.json").then((d) => {
     DATA = d; ACTIVE = (d.storms || []).filter((s) => s.status === "active" && s.track && s.track.length);
-    today(); glance(); miniGlobe(); heroSat();
+    today(); glance(); miniGlobe();          // the hero uses the bundled orbital image: always loads, no outside service
     try { const p = JSON.parse(localStorage.getItem("tc-place") || "null"); if (p) { assess(p); const o = [...city.options].find((x) => x.value.endsWith(`,${p.name}`)); if (o) city.value = o.value; } } catch (e) { /* ignore */ }
     both((m) => m.setStorms(stormList()));
   }).catch(() => { $("#t-headline").textContent = "The storm list could not be loaded. It is created by the site's regular update."; });
