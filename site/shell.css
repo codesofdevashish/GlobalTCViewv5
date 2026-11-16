@@ -366,3 +366,31 @@ body[data-view="today"] { overflow-x: hidden; }
 .today .hero { background: #071a2a; }
 .today .hero-bg { object-position: 50% 50%; }
 .today .hero::before { background: linear-gradient(90deg, rgba(4, 12, 22, .55) 0%, rgba(4, 12, 22, .30) 45%, rgba(4, 12, 22, 0) 70%), linear-gradient(0deg, rgba(4, 12, 22, .35), transparent 30%); }
+
+.about .cite-ver { font-size: .85rem; color: var(--ink-2); margin-top: -.3rem; }
+
+/* =================================================================== "Be ready" infographic: a three-stage timeline with pictograms */
+.pinfo { list-style: none; margin: 1.2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; position: relative; }
+.pinfo::before { content: ""; position: absolute; left: 2.2rem; right: 2.2rem; top: 1.45rem; height: 4px; border-radius: 2px; z-index: 0;
+  background: linear-gradient(90deg, #2f86c4, #e8873a 50%, #2e9b62); opacity: .85; }
+.pi-phase { --c: #2f86c4; position: relative; z-index: 1; display: flex; flex-direction: column; }
+.pi-phase.warn { --c: #e8873a; } .pi-phase.after { --c: #2e9b62; }
+.pi-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .8rem; }
+.pi-num { flex: none; width: 2.9rem; height: 2.9rem; border-radius: 50%; display: grid; place-items: center; font: 700 1.25rem var(--display);
+  color: #fff; background: var(--c); box-shadow: 0 0 0 5px var(--bg), 0 6px 18px color-mix(in srgb, var(--c) 45%, transparent); }
+.pi-when { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: var(--c); }
+.pi-head h3 { margin: .05rem 0 0; font-size: 1.05rem; }
+.pi-list { list-style: none; margin: 0; padding: .9rem; display: grid; gap: .55rem; flex: 1;
+  background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 12px; }
+.pi-item { display: grid; grid-template-columns: 2.6rem 1fr; gap: .7rem; align-items: start; padding: .55rem .6rem; border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 7%, transparent); transition: background .15s ease, transform .15s ease; }
+.pi-item:hover { background: color-mix(in srgb, var(--c) 14%, transparent); transform: translateX(2px); }
+.pi-ic { width: 2.6rem; height: 2.6rem; border-radius: 10px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.pi-ic svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.pi-item b { display: block; font-size: .96rem; line-height: 1.3; } .pi-item span { display: block; font-size: .84rem; line-height: 1.45; color: var(--ink-2); margin-top: .15rem; }
+@media (max-width: 980px) { .pinfo { grid-template-columns: 1fr; } .pinfo::before { left: 1.42rem; right: auto; top: 1.4rem; bottom: 1.4rem; width: 4px; height: auto; background: linear-gradient(180deg, #2f86c4, #e8873a 50%, #2e9b62); } }
+@media (prefers-reduced-motion: reduce) { .pi-item { transition: none; } }
+/* the timeline joins only the numbered circles; the stage titles sit underneath */
+.pi-head { flex-direction: column; align-items: flex-start; gap: .55rem; }
+.pinfo::before { top: 1.45rem; }
+@media (max-width: 980px) { .pi-head { flex-direction: row; align-items: center; } .pinfo::before { top: 1.4rem; } }
