@@ -50,6 +50,12 @@ jobs:
           if not m: sys.exit("no new GFS fields: keeping the published site unchanged")
           TC.build("public", pd.Timestamp(m["cycle"].replace("Z", "")))
           print("live map now shows GFS", m["cycle"])
+          try:
+              import ecmwf as EC
+              e = EC.build("public")
+              if e: print("and ECMWF", e["cycle"])
+          except Exception as err:
+              print("::warning::ECMWF step failed:", err)
           PY
 
       - uses: actions/configure-pages@v5
