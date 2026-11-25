@@ -6,6 +6,12 @@ authors:
   - family-names: Singh
     given-names: Devashish Prakash
     affiliation: "Department of Climate Change, Indian Institute of Technology Hyderabad"
+  - family-names: Rathinasamy
+    given-names: Maheswaran
+    affiliation: "Indian Institute of Technology Hyderabad"
+  - family-names: Upadhyaya
+    given-names: Shruti
+    affiliation: "Indian Institute of Technology Hyderabad"
 license: MIT
 version: "1.1.0"
 doi: 10.5281/zenodo.24157024
@@ -16,6 +22,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.24157025
     description: "Version 1.0.0"
+  - type: doi
+    value: 10.5281/zenodo.24242401
+    description: "Version 1.1.0"
 repository-code: "https://github.com/codesofdevashish/GlobalTCViewv5"
 url: "https://codesofdevashish.github.io/GlobalTCViewv5/"
 keywords: [tropical cyclones, rapid intensification, storm surge, GFS, visualisation, early warning, science communication]
