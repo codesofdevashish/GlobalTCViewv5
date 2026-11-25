@@ -597,6 +597,12 @@
         sst: st.surf ? sample(st.surf.sst, lon, lat) : null, tmp: sample(l.tmp, lon, lat), cape: st.surf ? sample(st.surf.cape, lon, lat) : NaN,
         rain: st.surf ? sample(st.surf.rain6, lon, lat) : NaN, vort: l.u ? sample(vorticity(l), lon, lat) : NaN,
         up: l.w ? -sample(l.w, lon, lat) : NaN,
+        ...(() => {                                          // the full 3D wind: w (m/s) from omega, w = -omega R T / (p g)
+          const om = l.w ? sample(l.w, lon, lat) : NaN, Tc = l.tmp ? sample(l.tmp, lon, lat) : NaN, uu = sample(l.u, lon, lat), vv = sample(l.v, lon, lat);
+          if (!isFinite(om) || !isFinite(uu)) return {};
+          const T = (isFinite(Tc) ? Tc : 15) + 273.15, wms = -om * 287.05 * T / (st.level * 100 * 9.81), hs = Math.hypot(uu, vv), res = Math.hypot(uu, vv, wms);
+          return { w_ms: wms, res_kmh: res * 3.6, tilt: Math.atan2(wms, hs) * 180 / Math.PI };
+        })(),
         t2: st.surf && st.surf.t2 ? sample(st.surf.t2, lon, lat) : NaN, rh2: st.surf && st.surf.rh2 ? sample(st.surf.rh2, lon, lat) : NaN, ivt: st.surf && st.surf._ivt ? sample(st.surf._ivt.M, lon, lat) : NaN, sss: st.surf && st.surf.sss ? sample(st.surf.sss, lon, lat) : NaN,
         hs: st.surf ? sample(st.surf.hs, lon, lat) : NaN, wto: st.surf && st.surf.wu ? DIRS[Math.round(((Math.atan2(sample(st.surf.wu, lon, lat), sample(st.surf.wv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null,
         cur: st.surf && st.surf.cu ? Math.hypot(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) : NaN,

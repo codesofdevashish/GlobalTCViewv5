@@ -357,6 +357,7 @@
     const r = wx.readout(c[1], c[0]); box.hidden = false; const lo = ((c[1] + 540) % 360) - 180;
     const bits = [`${Math.abs(c[0]).toFixed(1)}°${c[0] >= 0 ? "N" : "S"} ${Math.abs(lo).toFixed(1)}°${lo >= 0 ? "E" : "W"}`];
     if (r.wind_kmh != null) bits.push(`${r.wind_kmh} ${t("unit.kmh")} ${t(`dir16.${r.from}`, {}, r.from)}`);
+    if (isFinite(r.w_ms)) bits.push(`w ${(r.w_ms * 100).toFixed(1)} cm/s ${r.w_ms >= 0 ? "↑" : "↓"}`);
     if (r.mslp) bits.push(`${r.mslp} hPa`); if (isFinite(r.ivt)) bits.push(`IVT ${Math.round(r.ivt)}`); if (r.sst != null && isFinite(r.sst)) bits.push(`SST ${r.sst.toFixed(1)} °C`);
     if (isFinite(r.sss)) bits.push(`${r.sss.toFixed(1)} PSU`);
     $("#centre-text").textContent = bits.join(" · ");
@@ -432,12 +433,16 @@
     if (isFinite(r.tmp)) a.push(t("rd.tmp", { v: r.tmp.toFixed(1) })); if (isFinite(r.vort)) a.push(t("rd.vort", { v: r.vort.toFixed(1) }));
     if (isFinite(r.tw)) s2.push(t("rd.tw", { v: r.tw.toFixed(1) }) + (r.tw >= 31 ? t("rd.tw31") : r.tw >= 28 ? t("rd.tw28") : ""));
     if (isFinite(r.hi)) s2.push(t("rd.hi", { v: Math.round(r.hi) }));
-    if (isFinite(r.up) && Math.abs(r.up) >= 0.02) a.push(t(r.up > 0 ? "rd.rise" : "rd.sink", { v: Math.abs(r.up).toFixed(2) }));
+    const res3 = isFinite(r.w_ms) ? el("p", { class: "res3d", text: t("rd.res3d", { r: r.res_kmh.toFixed(1), w: (r.w_ms >= 0 ? "+" : "") + (r.w_ms * 100).toFixed(1),
+      dir: t(r.w_ms >= 0 ? "rd.up" : "rd.down"), a: Math.abs(r.tilt).toFixed(2), om: (-r.up).toFixed(2) }) }) : null;
+    if (false) b.append(el("p", { class: "res3d", text: t("rd.res3d", { r: r.res_kmh.toFixed(1), w: (r.w_ms >= 0 ? "+" : "") + (r.w_ms * 100).toFixed(1),
+      dir: t(r.w_ms >= 0 ? "rd.up" : "rd.down"), a: Math.abs(r.tilt).toFixed(2), om: (-r.up).toFixed(2) }) }));
     if (isFinite(r.ivt)) s2.push(t("rd.ivt", { v: Math.round(r.ivt) })); if (isFinite(r.sss)) s2.push(t("rd.sss", { v: r.sss.toFixed(1) }));
     if (isFinite(r.hs)) s2.push(t("rd.hs", { v: r.hs.toFixed(1), dir: t(`dir16.${r.wto}`, {}, r.wto) }));
     if (isFinite(r.cur) && r.cur > 0.02) s2.push(t("rd.cur", { v: r.cur.toFixed(2), dir: t(`dir16.${r.cto}`, {}, r.cto) }));
     if (isFinite(r.cape)) s2.push(t("rd.cape", { v: Math.round(r.cape) })); if (isFinite(r.rain)) s2.push(t("rd.rain", { v: r.rain.toFixed(1) }));
     b.append(el("h3", { text: `${lat}, ${lon}` }), el("p", { text: `${lvl}: ${a.join(", ")}${stop()}` }), el("p", { text: s2.join(", ") + stop() }));
+    if (res3) b.append(res3);
     const F = window.WxMap.FLOW, c = r.wind_kmh != null ? F.css[Math.max(0, Math.min(255, Math.round(r.wind_kmh / F.hi * 255)))] : null;
     if (c) b.append(el("p", { class: "swatch" }, [el("i", { style: `background:${c}` }), ` ${r.wind_kmh} ${window.I18N && window.I18N.lang === "hi" ? "किमी/घंटा" : "km/h"}`]));
   }
