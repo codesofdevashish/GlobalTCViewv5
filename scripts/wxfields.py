@@ -77,7 +77,7 @@ def currents_nomads(sess):
         try:
             sub = "[0:8:56][0][0:12:2159][0:12:4319]"
             r = sess.get(f"{base}?u_velocity{sub},v_velocity{sub},sss{sub},time[0:8:56],lat[0:12:2159],lon[0:12:4319]", timeout=300)
-            if r.status_code != 200 or "u_velocity" not in r.text[:500]: continue
+            if r.status_code != 200 or "u_velocity" not in r.text[:500]: print(f"  ocean (OPeNDAP) {day}: HTTP {r.status_code}"); continue
             d = _dods_ascii(r.text); lat, lon, tt = d.get("lat"), d.get("lon"), d.get("time")
             if lat is None or lon is None or tt is None: continue
             nt, ny, nx = len(tt), len(lat), len(lon)
@@ -96,6 +96,66 @@ def currents_nomads(sess):
             print(f"  ocean currents and salinity: {len(out)} daily fields from RTOFS {day} (NOMADS)"); return out
         except Exception as e:
             print(f"  ocean (NOMADS) {day}: {type(e).__name__} {e}")
+    return {}
+
+
+RTOFS_HOSTS = ["https://nomads.ncep.noaa.gov/pub/data/nccf/com/rtofs/prod", "https://noaa-nws-rtofs-pds.s3.amazonaws.com"]
+
+
+def _rtofs_names(fh):                                                        # RTOFS v3 names first (2026), then the older v2 names
+    return [f"rtofs_glo_2ds.f{fh:03d}.nc", f"rtofs_glo_2ds_f{fh:03d}_prog.nc"]
+
+
+def _pick(ds, names):
+    for n in names:
+        if n in ds.variables: return ds.variables[n]
+    return None
+
+
+def currents_netcdf(sess):
+    """Daily surface currents and salinity from the official RTOFS netCDF files (NOMADS, then NOAA's AWS mirror)."""
+    import netCDF4
+    tried = []
+    for back in range(3):
+        run = (pd.Timestamp.now("UTC").tz_localize(None) - pd.Timedelta(days=back)).floor("D")
+        def url_for(fh):
+            for host in RTOFS_HOSTS:
+                for name in _rtofs_names(fh):
+                    u = f"{host}/rtofs.{run:%Y%m%d}/{name}"
+                    try:
+                        r = sess.head(u, timeout=30, allow_redirects=True); tried.append(f"{r.status_code} {u}")
+                        if r.status_code == 200: return u
+                    except Exception as e:
+                        tried.append(f"{type(e).__name__} {u}")
+            return None
+        if not url_for(24): continue
+        out, lon_lat = {}, None
+        for fh in (0, 24, 48, 72, 96, 120, 144):
+            u = url_for(fh) or (url_for(1) if fh == 0 else None)
+            if not u: continue
+            try:
+                r = sess.get(u, timeout=600); r.raise_for_status()
+                ds = netCDF4.Dataset("rtofs", memory=r.content)
+                U, V, S = _pick(ds, ["u_velocity", "u", "uo", "ssu"]), _pick(ds, ["v_velocity", "v", "vo", "ssv"]), _pick(ds, ["sss", "salinity", "so", "SSS"])
+                if lon_lat is None:
+                    la, lo = _pick(ds, ["Latitude", "latitude", "lat"]), _pick(ds, ["Longitude", "longitude", "lon"])
+                    la, lo = np.asarray(la[:], "float64"), np.asarray(lo[:], "float64")
+                    if la.ndim == 1: lo, la = np.meshgrid(lo, la)
+                    sl = (slice(None, None, 3), slice(None, None, 3))                   # every 3rd point is plenty for 1-degree means
+                    J = np.clip(np.round(90 - la[sl]).astype(int), 0, NY - 1); I = np.round(lo[sl] % 360).astype(int) % NX; lon_lat = (sl, J, I)
+                sl, J, I = lon_lat
+                def grid(var):
+                    if var is None: return np.full((NY, NX), np.nan)
+                    a = np.squeeze(np.ma.filled(var[:].astype("float64"), np.nan)); a = a[(0,) * (a.ndim - 2)] if a.ndim > 2 else a
+                    a = a[sl]; a = np.where(np.abs(a) > 1e3, np.nan, a); ok = np.isfinite(a); Sm, N = np.zeros((NY, NX)), np.zeros((NY, NX))
+                    np.add.at(Sm, (J[ok], I[ok]), a[ok]); np.add.at(N, (J[ok], I[ok]), 1)
+                    with np.errstate(invalid="ignore", divide="ignore"): return np.where(N > 0, Sm / N, np.nan)
+                out[run + pd.Timedelta(hours=fh)] = (grid(U), grid(V), grid(S)); ds.close()
+            except Exception as e:
+                print(f"  ocean (netCDF) {u}: {type(e).__name__} {e}")
+        if out:
+            print(f"  ocean currents and salinity: {len(out)} daily fields from RTOFS {run:%Y-%m-%d} (netCDF)"); return out
+    print("  ocean (netCDF): nothing found; tried:"); [print("   ", t) for t in tried[:12]]
     return {}
 
 
@@ -221,7 +281,7 @@ def build(public, latest=None, sess=None):
     f0 = fetch_messages(cyc0, 0, want(0), sess)
     if not f0:
         print("::error::weather fields: the analysis could not be downloaded"); return None
-    CUR = currents_nomads(sess) or currents(sess)                           # NOMADS first; ERDDAP's copy only as a fallback
+    CUR = currents_netcdf(sess) or currents_nomads(sess) or currents(sess)  # official netCDF files first, then OPeNDAP, then ERDDAP
     if not CUR: print("::warning::ocean currents and salinity: no source answered")
     plan = [(-h, cyc0 - pd.Timedelta(hours=h), 0) for h in (48, 36, 24, 12)] + [(0, cyc0, 0)] + [(fh, cyc0, fh) for fh in range(12, 121, 12)]
     for i, (off, cyc, fh) in enumerate(plan):
