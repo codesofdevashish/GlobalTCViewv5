@@ -18,7 +18,7 @@
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(32, 1, 0.05, 100);
     let dist = 3.0; camera.position.set(0, 0, dist);
     const globe = new T.Group(); globe.rotation.order = "XYZ"; scene.add(globe);
-    const st = { flow: "wind", level: 850, mode: "single", scalar: "speed", wind: true, contours: true, storms: true, running: true, storms_: [] };
+    const st = { vert: false, flow: "wind", level: 850, mode: "single", scalar: "speed", wind: true, contours: true, storms: true, running: true, storms_: [] };
 
     // ---- Earth, atmosphere rim, colour layer
     const earthMat = new T.MeshBasicMaterial({ color: 0xd2dade });
@@ -60,15 +60,23 @@
       const parts = Array.from({ length: n }, () => spawn(p, true));
       return { p, n, g, pos, col, line, parts };
     }
+    const LOGP = (p) => Math.log(p);
+    function rAtP(pr) {                                           // altitude of a pressure, between the model levels (log-pressure)
+      const L = [1000, 850, 700, 500, 300, 200]; if (pr >= 1000) return rFor(1000); if (pr <= 200) return rFor(200);
+      for (let k = 0; k < L.length - 1; k++) if (pr <= L[k] && pr >= L[k + 1]) { const t = (LOGP(L[k]) - LOGP(pr)) / (LOGP(L[k]) - LOGP(L[k + 1])); return rFor(L[k]) * (1 - t) + rFor(L[k + 1]) * t; }
+      return rFor(500);
+    }
     function spawn(p, first) {
       const lat = Math.asin(2 * Math.random() - 1) / D, lon = Math.random() * 360 - 180;     // uniform over the sphere
-      const life = 110 + Math.floor(Math.random() * 80), r = rFor(p), v = ll2v(lat, lon, r), tr = new Float32Array(TL * 3);
+      const pr = p === "3d" ? Math.exp(LOGP(1000) + Math.random() * (LOGP(220) - LOGP(1000))) : p;
+      const life = (p === "3d" ? 150 : 110) + Math.floor(Math.random() * 80), r = p === "3d" ? rAtP(pr) : rFor(p), v = ll2v(lat, lon, r), tr = new Float32Array(TL * 3);
       for (let j = 0; j < TL; j++) tr.set(v, j * 3);
-      return { lon, lat, age: first ? Math.floor(Math.random() * life) : 0, life, tr, spd: 0 };
+      return { lon, lat, pr, age: first ? Math.floor(Math.random() * life) : 0, life, tr, spd: 0, w: 0 };
     }
     function buildSystems() {
       for (const s of systems) { globe.remove(s.line); s.g.dispose(); } systems = [];
       if (!st.wind) return;
+      if (st.mode === "stack" && st.vert && st.flow === "wind") { systems.push(makeSystem("3d", 11000)); return; }   // free 3D parcels
       const levels = st.mode === "stack" ? (src.data().meta ? src.data().meta.levels : []) : [st.level];
       for (const p of levels) systems.push(makeSystem(p, st.mode === "stack" ? 1700 : 5200));
     }
@@ -77,6 +85,7 @@
       const lev = src.data().lev;
       const SF = src.data().surf || {}, sea = st.flow !== "wind" && st.mode === "single";
       for (const S of systems) {
+        if (S.p === "3d") { step3D(S, lev); continue; }
         const l = sea ? { u: st.flow === "waves" ? SF.wu : SF.cu, v: st.flow === "waves" ? SF.wv : SF.cv } : lev[S.p]; if (!l || !l.u) continue;
         const r = sea ? 1.004 : rFor(S.p), sp = 0.011, emph = st.mode === "stack" && S.p !== st.level ? 0.55 : 1;
         for (let i = 0; i < S.n; i++) {
@@ -97,6 +106,34 @@
         }
         S.g.attributes.position.needsUpdate = true; S.g.attributes.color.needsUpdate = true;
       }
+    }
+
+    const VLEV = [1000, 850, 700, 500, 300, 200];
+    function vcol(w, spd) {                                          // rising air warm, sinking air blue; brighter when faster
+      const k = 0.85 + 0.35 * Math.min(1, spd / 40), up = -w, a = Math.min(1, Math.abs(up) / 0.4);
+      let c = up > 0 ? [1.0, 0.95 - 0.7 * a, 0.9 - 0.85 * a] : [0.92 - 0.8 * a, 0.95 - 0.45 * a, 1.0];
+      return c.map((x) => x * k);
+    }
+    function step3D(S, lev) {
+      const sp = 0.011, dt = sp * 111000;                              // one frame ~ 20 minutes of real motion, for both directions
+      for (let i = 0; i < S.n; i++) {
+        const q = S.parts[i]; let k = 0; while (k < VLEV.length - 2 && q.pr < VLEV[k + 1]) k++;
+        const a = lev[VLEV[k]], b = lev[VLEV[k + 1]]; if (!a || !b || !a.u || !b.u) continue;
+        const t = Math.max(0, Math.min(1, (LOGP(VLEV[k]) - LOGP(q.pr)) / (LOGP(VLEV[k]) - LOGP(VLEV[k + 1]))));
+        const mix = (fa, fb) => { const x = fa ? src.sample(fa, q.lon, q.lat) : 0, y = fb ? src.sample(fb, q.lon, q.lat) : 0; return (isFinite(x) ? x : 0) * (1 - t) + (isFinite(y) ? y : 0) * t; };
+        const u = mix(a.u, b.u), v = mix(a.v, b.v), w = mix(a.w, b.w);
+        if (++q.age > q.life || q.pr < 205) { S.parts[i] = spawn("3d", false); continue; }
+        q.lon += u * sp / Math.max(0.2, Math.cos(q.lat * D)); q.lat = Math.max(-85, Math.min(85, q.lat + v * sp));
+        q.pr = Math.min(1000, q.pr + w * dt / 100); q.w = w; q.spd = Math.hypot(u, v) * 3.6;        // omega in Pa/s -> hPa per frame
+        q.tr.copyWithin(3, 0, (TL - 1) * 3); q.tr.set(ll2v(q.lat, q.lon, rAtP(q.pr)), 0);
+        const c = st.flowColor === false ? WHITE : vcol(w, q.spd / 3.6), life = Math.min(1, q.age / 12, (q.life - q.age) / 12);
+        for (let j = 0; j < TL - 1; j++) {
+          const o = (i * (TL - 1) + j) * 6, f0 = (1 - j / (TL - 1)) * life, f1 = (1 - (j + 1) / (TL - 1)) * life;
+          S.pos[o] = q.tr[j * 3]; S.pos[o + 1] = q.tr[j * 3 + 1]; S.pos[o + 2] = q.tr[j * 3 + 2]; S.pos[o + 3] = q.tr[j * 3 + 3]; S.pos[o + 4] = q.tr[j * 3 + 4]; S.pos[o + 5] = q.tr[j * 3 + 5];
+          S.col[o] = c[0] * f0; S.col[o + 1] = c[1] * f0; S.col[o + 2] = c[2] * f0; S.col[o + 3] = c[0] * f1; S.col[o + 4] = c[1] * f1; S.col[o + 5] = c[2] * f1;
+        }
+      }
+      S.g.attributes.position.needsUpdate = true; S.g.attributes.color.needsUpdate = true;
     }
 
     // ---- contours (isobars near the surface, heights aloft) at the level's altitude

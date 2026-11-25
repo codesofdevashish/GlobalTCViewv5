@@ -440,3 +440,22 @@ body[data-view="today"] { overflow-x: hidden; }
   .tour-tip { left: .75rem !important; right: .75rem; width: auto; }
 }
 @media (max-width: 760px) { body[data-view="map"] .guide-fab { display: none; } }
+
+/* =================================================================== map panel: collapsible groups */
+.layers .lgrp { border-bottom: 1px solid rgba(160, 190, 210, .18); padding: .1rem 0 .5rem; margin-bottom: .35rem; }
+.layers .lgrp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: .45rem 0 .35rem;
+  font: 700 .82rem var(--body); text-transform: uppercase; letter-spacing: .06em; color: #a9d6e8; }
+.layers .lgrp > summary::-webkit-details-marker { display: none; }
+.layers .lgrp > summary::after { content: "▾"; font-size: .9rem; transition: transform .15s ease; } .layers .lgrp:not([open]) > summary::after { transform: rotate(-90deg); }
+.layers .lsub { margin: .5rem 0 .15rem; font-size: .72rem; font-weight: 700; color: #7f9fb0; text-transform: uppercase; letter-spacing: .05em; }
+.layers .lgrp .tb.wide { width: 100%; margin-top: .4rem; }
+:root[data-theme="light"] .layers .lgrp > summary { color: var(--accent); } :root[data-theme="light"] .layers .lgrp { border-color: var(--line); }
+.wx-legend .note.warn { color: #ffb35c; }
+
+/* the guide: a compact round button that keeps clear of panels and legends */
+.guide-fab { width: 3.1rem; height: 3.1rem; padding: 0; justify-content: center; border-radius: 50%; right: 1rem; bottom: 1rem; }
+.guide-fab span { position: absolute; right: calc(100% + .5rem); white-space: nowrap; background: rgba(8, 26, 38, .92); color: #fff; font-size: .8rem; padding: .3rem .6rem;
+  border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+.guide-fab:hover span, .guide-fab:focus-visible span { opacity: 1; } .guide-fab svg { width: 24px; height: 24px; }
+body[data-view="map"] .guide-fab { left: auto; right: 1rem; bottom: auto; top: 7.6rem; width: 2.6rem; height: 2.6rem; }
+main, .view { padding-bottom: 4.5rem; } body[data-view="map"] .view { padding-bottom: 0; }

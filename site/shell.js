@@ -278,17 +278,23 @@
   });
   function setMode(m) {
     MODE = m === "3d" && wx3 ? "3d" : "2d";
-    $("#wx").hidden = MODE !== "2d"; $("#wx3d").hidden = MODE !== "3d"; $("#stack-row").hidden = MODE !== "3d" || !wx3;
+    $("#wx").hidden = MODE !== "2d"; $("#wx3d").hidden = MODE !== "3d"; $("#stack-row").hidden = MODE !== "3d" || !wx3; $("#vert-row").hidden = MODE !== "3d" || !wx3;
     for (const b of $$(".seg")) b.setAttribute("aria-pressed", String(b.dataset.mode === MODE));
     if (wx) wx.pause(MODE !== "2d"); if (wx3) wx3.pause(MODE !== "3d");
     requestAnimationFrame(() => { const c = cur(); if (c) c.redraw(); }); legend();
   }
   $$(".seg").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  $("#ly-vert").addEventListener("change", async (e) => {       // free 3D parcels: horizontal wind plus vertical motion
+    if (!wx3) return; if (e.target.checked && !$("#ly-stack").checked) { $("#ly-stack").checked = true; await wx3.set("mode", "stack"); }
+    if (e.target.checked) { const f = $('input[name="flow"][value="wind"]'); if (f && !f.checked) { f.checked = true; f.dispatchEvent(new Event("change")); } }
+    await wx3.set("vert", e.target.checked); legend();
+  });
   $("#ly-stack").addEventListener("change", async (e) => { if (wx3) { $("#wx-time").dataset.busy = "1"; await wx3.set("mode", e.target.checked ? "stack" : "single"); legend(); } });
   const focusMap = (lon, lat) => both((m) => m.focus(lon, lat, 2.2));
   function timeLabel() {
     const m = wx && wx.meta(); if (!m || !m.times) return; const T_ = m.times[+$("#tm").value]; if (!T_) return;
-    const o = T_.offset_h, rel = o === 0 ? t("tm.now") : o < 0 ? (o === -24 ? t("tm.yday") : t("tm.ago", { n: -o / 24 })) : (o === 24 ? t("tm.in1") : t("tm.in", { n: o / 24 }));
+    const o = T_.offset_h, rel = o === 0 ? t("tm.now") : o % 24 ? t(o < 0 ? "tm.hago" : "tm.hin", { h: Math.abs(o) })
+      : o < 0 ? (o === -24 ? t("tm.yday") : t("tm.ago", { n: -o / 24 })) : (o === 24 ? t("tm.in1") : t("tm.in", { n: o / 24 }));
     const out = $("#tm-out"); out.textContent = `${rel}: ${when(toMs(T_.time))} `;
     out.append(el("span", { class: "fc", text: T_.kind === "forecast" ? t("tm.fc") : t("tm.an") }));
   }
@@ -333,14 +339,14 @@
       const meta = await wx.load(m === "ecmwf" ? "data/wx_ecmwf/" : "data/wx/"); MODEL = m;
       const tm = $("#tm"), times = meta.times || []; tm.max = Math.max(0, times.length - 1); tm.value = meta.now || 0; $(".timebar").hidden = times.length < 2; timeLabel();
       $("#wx-time").textContent = t("map.time2", { m: m === "ecmwf" ? "ECMWF IFS" : "NOAA GFS", t: when(toMs(meta.cycle)) });
-      for (const p of ["ar", "mid", "aod"]) if ($(`#ly-${p}`).checked) await wx.set(p, true);
+      for (const p of ["ar", "mid", "aod", "heat"]) if ($(`#ly-${p}`).checked) await wx.set(p, true);
       if (wx3) await wx3.refresh();
     } catch (e) { MODEL = keep; $("#wx-time").textContent = t("md.none"); }
     $$(".seg2").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.model === MODEL))); legend(); writeMapState();
   }
   $$(".seg2").forEach((b) => b.addEventListener("click", () => setModel(b.dataset.model)));
   // detections drawn on the flat map
-  for (const id of ["ar", "mid", "aod"]) $(`#ly-${id}`).addEventListener("change", async (e) => {
+  for (const id of ["ar", "mid", "aod", "heat"]) $(`#ly-${id}`).addEventListener("change", async (e) => {
     await initMap(); if (!wx) return; if (e.target.checked && MODE !== "2d") setMode("2d");
     await wx.set(id, e.target.checked); legend();
   });
@@ -370,7 +376,8 @@
   $("#pf-reset").addEventListener("click", async () => { await initMap(); both((x) => x.focus(80, 15, 1)); });
   // one-click scenes
   const SCENES = { ar: "view=2d&flow=wind&layer=ivt&level=850&ar=1&lon=-145&lat=35&z=1.25", ridge: "view=2d&flow=wind&layer=speed&level=500&mid=1&lon=130&lat=20&z=1.25",
-    monsoon: "view=2d&flow=wind&layer=vort&level=500&mid=1&lon=85&lat=20&z=1.5", itf: "view=2d&flow=currents&layer=sss&lon=120&lat=-5&z=3", aod: "view=2d&flow=wind&layer=none&aod=1&lon=60&lat=22&z=1.15" };
+    monsoon: "view=2d&flow=wind&layer=vort&level=500&mid=1&lon=85&lat=20&z=1.5", itf: "view=2d&flow=currents&layer=sss&lon=120&lat=-5&z=3", aod: "view=2d&flow=wind&layer=none&aod=1&lon=60&lat=22&z=1.15",
+    heat: "view=2d&flow=wind&layer=tw&level=1000&heat=1&lon=78&lat=22&z=1.5" };
   $$("[data-scene]").forEach((b) => b.addEventListener("click", () => { location.hash = `#map?${SCENES[b.dataset.scene]}`; }));
   // phones: the layers panel opens from a button
   $("#ly-toggle").addEventListener("click", () => { const p = $("#layers-panel"), open = !p.classList.contains("open"); p.classList.toggle("open", open); $("#ly-toggle").setAttribute("aria-expanded", String(open)); });
@@ -396,7 +403,14 @@
     if (wx.get("wind") && mono) box.append(el("p", { class: "note", text: t(fl === "waves" ? "lg.monowaves" : fl === "currents" ? "lg.monocur" : "lg.mono") }));
     else if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
     else if (wx.get("wind") && fl === "currents") box.append(...bar(t("lg.flcur"), F.stops, 0, 2, "m/s"));
-    else if (wx.get("wind")) box.append(...bar(t(R ? "lg.flow2" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
+    else if (wx.get("wind") && !(MODE === "3d" && wx3 && wx3.get("vert"))) box.append(...bar(t(R ? "lg.flow2" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
+    if (MODE === "3d" && wx3 && wx3.get("vert")) {
+      box.append(...bar(t("lg.vert"), ["#2f5fc4", "#79a6e6", "#dfe8f0", "#f6b26b", "#e2552e", "#a3182b"], -1, 1, "Pa/s"), el("p", { class: "note", text: t("lg.vertn") }));
+      if (!(wx.data().lev[850] || {}).w) box.append(el("p", { class: "note", text: t("lg.vertnone") }));
+    }
+    if (wx.get("heat")) box.append(el("p", { class: "note", text: t("lg.heat") }));
+    if (["sss", "curspd"].includes(s) || fl === "currents") { const S_ = wx.data().surf || {}; const a = S_.sss || S_.cu;
+      if (!a || !a.some((v) => isFinite(v))) box.append(el("p", { class: "note warn", text: t("lg.noocean") })); }
     if (wx.get("ar")) box.append(el("p", { class: "note", text: t("lg.ar") }));
     if (wx.get("mid")) box.append(el("p", { class: "note", text: t("lg.mid") }));
     if (wx.get("aod")) { const a = wx.aod(), stt = wx.aodState();
@@ -416,6 +430,9 @@
     const s2 = []; if (r.mslp) s2.push(t("rd.mslp", { v: r.mslp })); if (isFinite(r.pwat)) s2.push(t("rd.pwat", { v: r.pwat }));
     if (r.sst != null && isFinite(r.sst)) s2.push(t("rd.sst", { v: r.sst.toFixed(1) }) + (r.sst >= 26.5 ? t("rd.warm") : ""));
     if (isFinite(r.tmp)) a.push(t("rd.tmp", { v: r.tmp.toFixed(1) })); if (isFinite(r.vort)) a.push(t("rd.vort", { v: r.vort.toFixed(1) }));
+    if (isFinite(r.tw)) s2.push(t("rd.tw", { v: r.tw.toFixed(1) }) + (r.tw >= 31 ? t("rd.tw31") : r.tw >= 28 ? t("rd.tw28") : ""));
+    if (isFinite(r.hi)) s2.push(t("rd.hi", { v: Math.round(r.hi) }));
+    if (isFinite(r.up) && Math.abs(r.up) >= 0.02) a.push(t(r.up > 0 ? "rd.rise" : "rd.sink", { v: Math.abs(r.up).toFixed(2) }));
     if (isFinite(r.ivt)) s2.push(t("rd.ivt", { v: Math.round(r.ivt) })); if (isFinite(r.sss)) s2.push(t("rd.sss", { v: r.sss.toFixed(1) }));
     if (isFinite(r.hs)) s2.push(t("rd.hs", { v: r.hs.toFixed(1), dir: t(`dir16.${r.wto}`, {}, r.wto) }));
     if (isFinite(r.cur) && r.cur > 0.02) s2.push(t("rd.cur", { v: r.cur.toFixed(2), dir: t(`dir16.${r.cto}`, {}, r.cto) }));
@@ -519,7 +536,7 @@
       for (const ov of (q.get("ov") || "").split(",").filter(Boolean)) { const c = $(`.chip[data-ov="${ov}"]`); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); }
       if (q.get("lon") && q.get("lat")) both((m) => m.focus(+q.get("lon"), +q.get("lat"), +q.get("z") || 1.6));
       if (q.get("model") && q.get("model") !== MODEL) await setModel(q.get("model"));
-      for (const p of ["ar", "mid", "aod"]) { const want = q.get(p) === "1", box = $(`#ly-${p}`); if (box.checked !== want) { box.checked = want; await wx.set(p, want); } }
+      for (const p of ["ar", "mid", "aod", "heat"]) { const want = q.get(p) === "1", box = $(`#ly-${p}`); if (box.checked !== want) { box.checked = want; await wx.set(p, want); } }
       if (q.get("stack") === "1" && wx3) { $("#ly-stack").checked = true; $("#ly-stack").dispatchEvent(new Event("change")); }
     } finally { applying = false; writeMapState(); }
   }
@@ -531,7 +548,7 @@
     const ov = $$('.chip[data-ov][aria-pressed="true"]').map((c) => c.dataset.ov); if (ov.length) q.set("ov", ov.join(","));
     if (MODE === "2d" && wx.getView) { const g = wx.getView(); q.set("lon", g.lon); q.set("lat", g.lat); q.set("z", g.k); }
     if (wx3 && MODE === "3d" && $("#ly-stack").checked) q.set("stack", "1");
-    if (MODEL !== "gfs") q.set("model", MODEL); for (const p of ["ar", "mid", "aod"]) if ($(`#ly-${p}`).checked) q.set(p, "1");
+    if (MODEL !== "gfs") q.set("model", MODEL); for (const p of ["ar", "mid", "aod", "heat"]) if ($(`#ly-${p}`).checked) q.set(p, "1");
     return q.toString();
   }
   let wTimer = null;

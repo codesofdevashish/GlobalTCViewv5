@@ -16,6 +16,8 @@
     cape:  { unit: "J/kg", lo: 0, hi: 4000, f: (x) => x, stops: ["#24415c", "#4f7a8c", "#d9d24a", "#f29a3a", "#d9342b", "#8b2a8a"] },
     hs:    { unit: "m", lo: 0, hi: 12, f: (x) => x, stops: ["#0b2545", "#13497a", "#1f7bb6", "#35b0c9", "#8fe0d6", "#f2f0a8", "#f2a65a", "#c8372d", "#5e0f2a"] },
     curspd:{ unit: "m/s", lo: 0, hi: 2, f: (x) => x, stops: ["#0a1f2e", "#0f4c5c", "#16807f", "#4fbf9f", "#bde68f", "#fff3a0", "#ffffff"] },
+    tw:    { unit: "°C", lo: 8, hi: 35, f: (x) => x, stops: ["#2c4a7a", "#3f7fb0", "#7ec2c0", "#e9e3a6", "#f6b04a", "#e8632b", "#c4202f", "#6e0f3a"] },
+    up:    { unit: "Pa/s", lo: -1, hi: 1, f: (x) => x, stops: ["#2f5fc4", "#79a6e6", "#dfe8f0", "#f6b26b", "#e2552e", "#a3182b"] },
     ivt:   { unit: "kg m⁻¹ s⁻¹", lo: 0, hi: 1000, min: 100, f: (x) => x, stops: ["#cfe8f7", "#8fc6e8", "#f6e58b", "#f6b043", "#e8632b", "#b8233a", "#6d1a6e"] },
     sss:   { unit: "PSU", lo: 30, hi: 38, f: (x) => x, stops: ["#3b1f5f", "#2a4f9b", "#2f86c4", "#2fb3b0", "#9be3c8", "#f6e7a8", "#f2a65a", "#c8372d"] },
     rain:  { unit: "mm", lo: 0, hi: 60, f: (x) => x, stops: ["#bfe3f2", "#6fb8e0", "#2f6fc4", "#5b3fb0", "#b03aa8", "#ff5fc0"] },
@@ -205,6 +207,8 @@
         for (const l of gridLines(m, [0.5])) { bctx.beginPath(); path(l); bctx.strokeStyle = "#ff4fa3"; bctx.lineWidth = 2.4; bctx.stroke(); }
         if (visible(ar.lon, ar.lat)) label(`Atmospheric river · ${Math.round(ar.max)} kg/m/s`, ar.lon, ar.lat, { size: 12, weight: 700, color: "#ff4fa3" });
       }
+      if (st.heat) { const tw = wetBulb();                     // dangerous humid heat: wet-bulb 28 C (orange) and 31 C (red)
+        if (tw) for (const [lev, col, wdt] of [[28, "#ff9b3d", 2], [31, "#ff2f4f", 2.6]]) for (const l of gridLines(tw, [lev])) { bctx.beginPath(); path(l); bctx.strokeStyle = col; bctx.lineWidth = wdt; bctx.stroke(); } }
       if (st.mid && st.lev[500] && st.lev[500].hgt) {
         for (const l of gridLines(st.lev[500].hgt, [5880])) { bctx.beginPath(); path(l); bctx.setLineDash([9, 5]); bctx.strokeStyle = "#ffb347"; bctx.lineWidth = 2.2; bctx.stroke(); bctx.setLineDash([]); }
         for (const m of midSystems()) { if (!visible(m.lon, m.lat)) continue; const p = proj([m.lon, m.lat]);
@@ -214,8 +218,22 @@
           if (st.k >= 1.3) label(`${m.kind === "L" ? "500 hPa low" : "500 hPa high"} · ${m.hgt.toLocaleString("en")} m`, m.lon, m.lat - 2.6, { size: 11, weight: 600, color: P.text }); }
       }
     }
+    function wetBulb() {                                     // Stull (2011) wet-bulb temperature from 2 m temperature (C) and humidity (%)
+      const S = st.surf || {}; if (S._tw) return S._tw; if (!S.t2 || !S.rh2) return null;
+      const n = S.t2.length, o = new Float32Array(n);
+      for (let i = 0; i < n; i++) { const T = S.t2[i], R = Math.max(5, Math.min(99, S.rh2[i]));
+        o[i] = isFinite(T) && isFinite(S.rh2[i]) ? T * Math.atan(0.151977 * Math.sqrt(R + 8.313659)) + Math.atan(T + R) - Math.atan(R - 1.676331) + 0.00391838 * R ** 1.5 * Math.atan(0.023101 * R) - 4.686035 : NaN; }
+      return (S._tw = o);
+    }
+    function heatIndex(T, R) {                               // NOAA heat index (Rothfusz), in C
+      const F = T * 9 / 5 + 32; let H = 0.5 * (F + 61 + (F - 68) * 1.2 + R * 0.094);
+      if (H >= 80) H = -42.379 + 2.04901523 * F + 10.14333127 * R - 0.22475541 * F * R - 0.00683783 * F * F - 0.05481717 * R * R + 0.00122874 * F * F * R + 0.00085282 * F * R * R - 0.00000199 * F * F * R * R;
+      return (H - 32) * 5 / 9;
+    }
     function scalarFor(name) {
       if (name === "ivt") { const f = ivtField(); return f ? f.M : null; }
+      if (name === "tw") return wetBulb();
+      if (name === "up") { const l = L(); if (!l.w) return null; if (!l._up) { l._up = new Float32Array(l.w.length); for (let i = 0; i < l.w.length; i++) l._up[i] = -l.w[i]; } return l._up; }
       if (name === "sss") return (st.surf || {}).sss;
       const l = L(), S = st.surf || {};
       if (name === "hs") return S.hs;
@@ -231,7 +249,7 @@
       return R;
     }
     function scalarArray() {
-      if (["tmp", "vort", "cape", "rain", "shear", "hs", "curspd", "ivt", "sss"].includes(st.scalar)) return scalarFor(st.scalar);
+      if (["tmp", "vort", "cape", "rain", "shear", "hs", "curspd", "ivt", "sss", "up", "tw"].includes(st.scalar)) return scalarFor(st.scalar);
       if (st.scalar === "pwat") return st.surf && st.surf.pwat;
       if (st.scalar === "sst") return st.surf && st.surf.sst;
       if (st.scalar === "rh") return L().rh;
@@ -572,12 +590,14 @@
     function readout(lon, lat) {
       const l = L(), u = sample(l.u, lon, lat), v = sample(l.v, lon, lat), spd = Math.hypot(u, v);
       const from = DIRS[Math.round(((Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360) / 22.5) % 16];
-      return { lon, lat, level: st.level, levelInfo: LEVEL_INFO[st.level], wind_kmh: isFinite(spd) ? Math.round(spd * 3.6) : null, from,
+      const _t2 = st.surf && st.surf.t2 ? sample(st.surf.t2, lon, lat) : NaN, _rh = st.surf && st.surf.rh2 ? sample(st.surf.rh2, lon, lat) : NaN, _tw = wetBulb();
+      return { tw: _tw ? sample(_tw, lon, lat) : NaN, hi: isFinite(_t2) && isFinite(_rh) && _t2 >= 26 ? heatIndex(_t2, _rh) : NaN, lon, lat, level: st.level, levelInfo: LEVEL_INFO[st.level], wind_kmh: isFinite(spd) ? Math.round(spd * 3.6) : null, from,
         hgt: st.level === 1000 ? null : Math.round(sample(l.hgt, lon, lat)), rh: Math.round(sample(l.rh, lon, lat)),
         mslp: st.surf ? Math.round(sample(st.surf.mslp, lon, lat)) : null, pwat: st.surf ? Math.round(sample(st.surf.pwat, lon, lat)) : null,
         sst: st.surf ? sample(st.surf.sst, lon, lat) : null, tmp: sample(l.tmp, lon, lat), cape: st.surf ? sample(st.surf.cape, lon, lat) : NaN,
         rain: st.surf ? sample(st.surf.rain6, lon, lat) : NaN, vort: l.u ? sample(vorticity(l), lon, lat) : NaN,
-        ivt: st.surf && st.surf._ivt ? sample(st.surf._ivt.M, lon, lat) : NaN, sss: st.surf && st.surf.sss ? sample(st.surf.sss, lon, lat) : NaN,
+        up: l.w ? -sample(l.w, lon, lat) : NaN,
+        t2: st.surf && st.surf.t2 ? sample(st.surf.t2, lon, lat) : NaN, rh2: st.surf && st.surf.rh2 ? sample(st.surf.rh2, lon, lat) : NaN, ivt: st.surf && st.surf._ivt ? sample(st.surf._ivt.M, lon, lat) : NaN, sss: st.surf && st.surf.sss ? sample(st.surf.sss, lon, lat) : NaN,
         hs: st.surf ? sample(st.surf.hs, lon, lat) : NaN, wto: st.surf && st.surf.wu ? DIRS[Math.round(((Math.atan2(sample(st.surf.wu, lon, lat), sample(st.surf.wv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null,
         cur: st.surf && st.surf.cu ? Math.hypot(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) : NaN,
         cto: st.surf && st.surf.cu ? DIRS[Math.round(((Math.atan2(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null };

@@ -225,62 +225,79 @@
   <div id="wx" class="wx-stage" role="img" aria-label="Flat map with wind streamlines and weather layers" hidden></div>
   <div id="wx3d" class="wx-stage" role="img" aria-label="3D globe with wind streamlines at the chosen height"></div>
   <aside class="layers" id="layers-panel" aria-labelledby="ly-h">
-    <div class="viewseg" role="group" aria-label="Map view">
+    <h2 id="ly-h" class="sr" data-i18n="ly.h">Layers</h2>
+    <details class="lgrp" open><summary data-i18n="gp.view">View</summary>
+      <div class="viewseg" role="group" aria-label="Map view">
       <button type="button" class="seg" data-mode="3d" aria-pressed="true" data-i18n="v.3d">3D globe</button>
       <button type="button" class="seg" data-mode="2d" aria-pressed="false" data-i18n="v.2d">Flat map</button>
     </div>
-    <label class="tgl" id="stack-row"><input type="checkbox" id="ly-stack"> <span data-i18n="v.stack">All heights at once (3D vortex)</span></label>
-    <div class="modelseg" role="group" aria-label="Weather model">
+      <label class="tgl" id="stack-row"><input type="checkbox" id="ly-stack"> <span data-i18n="v.stack">All heights at once (3D vortex)</span></label>
+      <label class="tgl" id="vert-row"><input type="checkbox" id="ly-vert"> <span data-i18n="v.vert">Add vertical motion (resultant 3D wind)</span></label>
+      <div class="modelseg" role="group" aria-label="Weather model">
       <span data-i18n="md.h">Model</span>
       <button type="button" class="seg2" data-model="gfs" aria-pressed="true">NOAA GFS</button>
       <button type="button" class="seg2" data-model="ecmwf" aria-pressed="false">ECMWF IFS</button>
     </div>
-    <form class="placefind" id="placefind" role="search"><label class="sr" for="pf-q">Find a place</label>
+      <button type="button" class="tb wide" id="copy-view" data-i18n="ly.copy">Copy a link to this view</button>
+    </details>
+    <details class="lgrp" open><summary data-i18n="gp.find">Find a place and scenes</summary>
+      <form class="placefind" id="placefind" role="search"><label class="sr" for="pf-q">Find a place</label>
       <input id="pf-q" list="pf-list" autocomplete="off" placeholder="Find a place, or lat, lon" data-i18n-ph="pf.ph"><datalist id="pf-list"></datalist>
       <button type="submit" class="tb" aria-label="Go">→</button><button type="button" class="tb" id="pf-reset" data-i18n="pf.reset" title="Back to the whole globe">Reset</button></form>
-    <div class="scenes" aria-label="Scenes"><span data-i18n="sc.h">Scenes</span>
-      <button type="button" class="chip-l" data-scene="ar" data-i18n="sc.ar">Atmospheric rivers</button>
+      <div class="scenes" aria-label="Scenes"><button type="button" class="chip-l" data-scene="ar" data-i18n="sc.ar">Atmospheric rivers</button>
       <button type="button" class="chip-l" data-scene="ridge" data-i18n="sc.ridge">Steering ridge</button>
       <button type="button" class="chip-l" data-scene="monsoon" data-i18n="sc.monsoon">Mid-level lows</button>
       <button type="button" class="chip-l" data-scene="itf" data-i18n="sc.itf">Indonesian Throughflow</button>
-      <button type="button" class="chip-l" data-scene="aod" data-i18n="sc.aod">Smoke and dust</button></div>
-    <button type="button" class="tb wide" id="copy-view" data-i18n="ly.copy">Copy a link to this view</button>
-    <h2 id="ly-h" data-i18n="ly.h">Layers</h2>
-    <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-cont" checked> <span id="ly-cont-label">Pressure: isobars, highs and lows</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-storms" checked> <span data-i18n="ly.storms">Tropical cyclones</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-labels" checked> <span data-i18n="ly.labels">Place names</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-towns"> <span data-i18n="ly.towns">Coastal towns: 5-day forecast</span></label>
-    <h3 data-i18n="fl.h">Moving lines show</h3>
-    <label class="opt"><input type="radio" name="flow" value="wind" checked> <span data-i18n="fl.wind">Wind at this height</span></label>
-    <label class="opt"><input type="radio" name="flow" value="waves"> <span data-i18n="fl.waves">Ocean waves (direction of travel)</span></label>
-    <label class="opt"><input type="radio" name="flow" value="currents"> <span data-i18n="fl.currents">Ocean surface currents</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-flowcol" checked> <span data-i18n="fl.colour">Colour the moving lines by speed</span></label>
-    <h3 data-i18n="ly.colour">Colour the map by</h3>
-    <label class="opt"><input type="radio" name="scalar" value="speed" checked> <span data-i18n="ly.speed">Wind speed</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="rh"> <span data-i18n="ly.rh">Humidity at this level</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="sst"> <span data-i18n="ly.sst">Sea surface temperature</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="ivt"> <span data-i18n="ly.ivt">Water vapour transport (IVT)</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="sss"> <span data-i18n="ly.sss">Sea surface salinity</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="hs"> <span data-i18n="ly.hs">Sea wave height</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="curspd"> <span data-i18n="ly.curspd">Ocean current speed</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="tmp"> <span data-i18n="ly.tmp">Temperature at this height</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="vort"> <span data-i18n="ly.vort">Spin of the air (vorticity)</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="shear"> <span data-i18n="ly.shear">Wind shear, 850–200 hPa</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="cape"> <span data-i18n="ly.cape">Thunderstorm energy (CAPE)</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="rain"> <span data-i18n="ly.rain">Rain in 6 hours (forecast)</span></label>
-    <label class="opt"><input type="radio" name="scalar" value="none"> <span data-i18n="ly.none">Nothing</span></label>
-    <h3 data-i18n="dt.h">Detect and show</h3>
-    <label class="tgl"><input type="checkbox" id="ly-ar"> <span data-i18n="dt.ar">Atmospheric rivers</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-mid"> <span data-i18n="dt.mid">Mid-level lows and highs (500 hPa)</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-aod"> <span data-i18n="dt.aod">Aerosols: smoke and dust (NASA)</span></label>
-    <label class="tgl"><input type="checkbox" id="ly-centre"> <span data-i18n="dt.centre">Reading at the map centre</span></label>
-    <h3 data-i18n="ly.explain">Explain the circulation</h3>
-    <button type="button" class="chip" data-ov="cells" aria-pressed="false" data-i18n="ov.cells">Hadley, Ferrel and polar cells</button>
-    <button type="button" class="chip" data-ov="walker" aria-pressed="false" data-i18n="ov.walker">Walker circulation</button>
-    <button type="button" class="chip" data-ov="nino" aria-pressed="false" data-i18n="ov.nino">El Niño and Indian Ocean Dipole regions</button>
-    <button type="button" class="chip" data-ov="ocean" aria-pressed="false" data-i18n="ov.ocean">Ocean currents and gyres</button>
+      <button type="button" class="chip-l" data-scene="aod" data-i18n="sc.aod">Smoke and dust</button>
+      <button type="button" class="chip-l" data-scene="heat" data-i18n="sc.heat">Humid heat</button></div>
+    </details>
+    <details class="lgrp" open><summary data-i18n="gp.lines">Moving lines</summary>
+      <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
+      <label class="opt"><input type="radio" name="flow" value="wind" checked> <span data-i18n="fl.wind">Wind at this height</span></label>
+      <label class="opt"><input type="radio" name="flow" value="waves"> <span data-i18n="fl.waves">Ocean waves (direction of travel)</span></label>
+      <label class="opt"><input type="radio" name="flow" value="currents"> <span data-i18n="fl.currents">Ocean surface currents</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-flowcol" checked> <span data-i18n="fl.colour">Colour the moving lines by speed</span></label>
+    </details>
+    <details class="lgrp" open><summary data-i18n="gp.colour">Colour the map by</summary>
+      <p class="lsub" data-i18n="gp.atm">Atmosphere</p>
+<label class="opt"><input type="radio" name="scalar" value="speed" checked> <span data-i18n="ly.speed">Wind speed</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="rh"> <span data-i18n="ly.rh">Humidity at this level</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="tmp"> <span data-i18n="ly.tmp">Temperature at this height</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="up"> <span data-i18n="ly.up">Rising and sinking air at this height</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="vort"> <span data-i18n="ly.vort">Spin of the air (vorticity)</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="shear"> <span data-i18n="ly.shear">Wind shear, 850–200 hPa</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="cape"> <span data-i18n="ly.cape">Thunderstorm energy (CAPE)</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="rain"> <span data-i18n="ly.rain">Rain in 6 hours (forecast)</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="ivt"> <span data-i18n="ly.ivt">Water vapour transport (IVT)</span></label>
+      <p class="lsub" data-i18n="gp.ocean">Ocean</p>
+      <label class="opt"><input type="radio" name="scalar" value="sst"> <span data-i18n="ly.sst">Sea surface temperature</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="sss"> <span data-i18n="ly.sss">Sea surface salinity</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="hs"> <span data-i18n="ly.hs">Sea wave height</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="curspd"> <span data-i18n="ly.curspd">Ocean current speed</span></label>
+      <p class="lsub" data-i18n="gp.haz">Heat and hazards</p>
+      <label class="opt"><input type="radio" name="scalar" value="tw"> <span data-i18n="ly.tw">Humid heat stress (wet-bulb temperature)</span></label>
+      <label class="opt"><input type="radio" name="scalar" value="none"> <span data-i18n="ly.none">Nothing</span></label>
+    </details>
+    <details class="lgrp"><summary data-i18n="gp.detect">Detect and show</summary>
+      <label class="tgl"><input type="checkbox" id="ly-ar"> <span data-i18n="dt.ar">Atmospheric rivers</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-mid"> <span data-i18n="dt.mid">Mid-level lows and highs (500 hPa)</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-heat"> <span data-i18n="dt.heat">Dangerous humid heat (wet-bulb ≥ 28 °C)</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-aod"> <span data-i18n="dt.aod">Aerosols: smoke and dust (NASA)</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-centre"> <span data-i18n="dt.centre">Reading at the map centre</span></label>
+    </details>
+    <details class="lgrp"><summary data-i18n="gp.details">Map details</summary>
+      <label class="tgl"><input type="checkbox" id="ly-cont" checked> <span id="ly-cont-label">Pressure: isobars, highs and lows</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-storms" checked> <span data-i18n="ly.storms">Tropical cyclones</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-labels" checked> <span data-i18n="ly.labels">Place names</span></label>
+      <label class="tgl"><input type="checkbox" id="ly-towns"> <span data-i18n="ly.towns">Coastal towns: 5-day forecast</span></label>
+    </details>
+    <details class="lgrp"><summary data-i18n="gp.explain">Explain the circulation</summary>
+      <button type="button" class="chip" data-ov="cells" aria-pressed="false" data-i18n="ov.cells">Hadley, Ferrel and polar cells</button>
+      <button type="button" class="chip" data-ov="walker" aria-pressed="false" data-i18n="ov.walker">Walker circulation</button>
+      <button type="button" class="chip" data-ov="nino" aria-pressed="false" data-i18n="ov.nino">El Niño and Indian Ocean Dipole regions</button>
+      <button type="button" class="chip" data-ov="ocean" aria-pressed="false" data-i18n="ov.ocean">Ocean currents and gyres</button>
+    </details>
   </aside>
   <div class="timebar" role="group" aria-labelledby="tm-l">
     <button type="button" class="tb" id="tm-play" aria-label="Play through the days">▶</button>
