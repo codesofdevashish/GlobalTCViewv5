@@ -30,7 +30,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install (only what the map needs)
-        run: pip install numpy pandas requests eccodes
+        run: pip install numpy pandas requests eccodes netCDF4
 
       - name: Get the latest full build of the site
         env:
