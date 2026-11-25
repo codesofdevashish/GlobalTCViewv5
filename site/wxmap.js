@@ -16,6 +16,8 @@
     cape:  { unit: "J/kg", lo: 0, hi: 4000, f: (x) => x, stops: ["#24415c", "#4f7a8c", "#d9d24a", "#f29a3a", "#d9342b", "#8b2a8a"] },
     hs:    { unit: "m", lo: 0, hi: 12, f: (x) => x, stops: ["#0b2545", "#13497a", "#1f7bb6", "#35b0c9", "#8fe0d6", "#f2f0a8", "#f2a65a", "#c8372d", "#5e0f2a"] },
     curspd:{ unit: "m/s", lo: 0, hi: 2, f: (x) => x, stops: ["#0a1f2e", "#0f4c5c", "#16807f", "#4fbf9f", "#bde68f", "#fff3a0", "#ffffff"] },
+    ivt:   { unit: "kg m⁻¹ s⁻¹", lo: 0, hi: 1000, min: 100, f: (x) => x, stops: ["#cfe8f7", "#8fc6e8", "#f6e58b", "#f6b043", "#e8632b", "#b8233a", "#6d1a6e"] },
+    sss:   { unit: "PSU", lo: 30, hi: 38, f: (x) => x, stops: ["#3b1f5f", "#2a4f9b", "#2f86c4", "#2fb3b0", "#9be3c8", "#f6e7a8", "#f2a65a", "#c8372d"] },
     rain:  { unit: "mm", lo: 0, hi: 60, f: (x) => x, stops: ["#bfe3f2", "#6fb8e0", "#2f6fc4", "#5b3fb0", "#b03aa8", "#ff5fc0"] },
   };
   const FLOW = { lo: 0, hi: 200, stops: ["#9fd4ff", "#62d2c6", "#9be26a", "#f4e04a", "#f7a43a", "#f2603a", "#e0398f", "#ff8be0"] };   // streamline colour, km/h
@@ -75,7 +77,7 @@
     st.cache = {}; st.t = 0;
     let LANDMASK = null;                                    // 1-degree Natural Earth land mask: keeps sea-only fields off the land
     const landMask = () => LANDMASK || (LANDMASK = fetch("vendor/landmask-1deg.bin").then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? new Uint8Array(b) : null)).catch(() => null));
-    async function maskSea(S) { const m = await landMask(); if (!m) return; for (const k of ["sst", "hs", "wu", "wv", "cu", "cv"]) { const a = S[k]; if (a) for (let i = 0; i < a.length; i++) if (m[i]) a[i] = NaN; } }
+    async function maskSea(S) { const m = await landMask(); if (!m) return; for (const k of ["sst", "hs", "wu", "wv", "cu", "cv", "sss"]) { const a = S[k]; if (a) for (let i = 0; i < a.length; i++) if (m[i]) a[i] = NaN; } }
     async function loadTime(i) {
       const M = st.meta; if (!st.cache[i]) st.cache[i] = { surf: null, lev: {} };
       const C = st.cache[i];
@@ -83,7 +85,7 @@
       st.surf = C.surf; st.lev = C.lev;
     }
     async function load(baseUrl = "data/wx/") {
-      st.meta = await getJSON(`${baseUrl}meta.json?t=${Date.now()}`); st.base = baseUrl;     // always the newest run, never a cached copy
+      st.meta = await getJSON(`${baseUrl}meta.json?t=${Date.now()}`); st.base = baseUrl; st.cache = {}; contourCache = null;   // always the newest run
       if (st.meta.format === "bin-v2") { st.t = st.meta.now || 0; await loadTime(st.t); }
       else { const s = await getJSON(baseUrl + "surface.json"); st.surf = {}; for (const [k, e] of Object.entries(s)) st.surf[k] = decode(e); await maskSea(st.surf); }
       await setLevel(st.meta.levels.includes(850) ? 850 : st.meta.levels[0]);
@@ -91,7 +93,9 @@
     }
     async function setTime(i) {
       if (!st.meta || st.meta.format !== "bin-v2") return;
-      st.t = i; await loadTime(i); await levelData(st.level); contourCache = null; resetParticles(); draw();
+      st.t = i; await loadTime(i); await levelData(st.level); contourCache = null;
+      if (st.scalar === "ivt" || st.ar) await ensureLevels(); if (st.mid) await ensureLevels([500]);
+      resetParticles(); draw();
     }
     async function levelData(p) {
       if (st.meta && st.meta.format === "bin-v2") {
@@ -124,7 +128,95 @@
           z[k] = (dvdx - dudy + l.u[k] * Math.tan(lat * d) / a) * 1e5; } }
       return (l.vort = z);
     }
+    const IVT_LEVELS = [1000, 850, 700, 500, 300];
+    async function ensureLevels(list = IVT_LEVELS) { for (const p of list) if (st.meta && st.meta.levels.includes(p)) await levelData(p); }
+    function ivtField() {                                    // IVT = (1/g) * integral of q*V dp, 1000-300 hPa, from the model's RH, T and wind
+      const S = st.surf || {}; if (S._ivt) return S._ivt;
+      const lv = IVT_LEVELS.filter((p) => st.lev[p] && st.lev[p].u && st.lev[p].rh && st.lev[p].tmp); if (lv.length < 4) return null;
+      const n = NX * NY, qu = lv.map(() => new Float32Array(n)), qv = lv.map(() => new Float32Array(n));
+      lv.forEach((p, k) => { const L_ = st.lev[p];
+        for (let i = 0; i < n; i++) { const T = L_.tmp[i], es = 6.112 * Math.exp(17.67 * T / (T + 243.5)), e = Math.max(0, L_.rh[i]) / 100 * es, q = 0.622 * e / (p - 0.378 * e);
+          qu[k][i] = q * L_.u[i]; qv[k][i] = q * L_.v[i]; } });
+      const U = new Float32Array(n), V = new Float32Array(n), M = new Float32Array(n);
+      for (let k = 1; k < lv.length; k++) { const dp = (lv[k - 1] - lv[k]) * 100 / 9.81;
+        for (let i = 0; i < n; i++) { U[i] += 0.5 * (qu[k - 1][i] + qu[k][i]) * dp; V[i] += 0.5 * (qv[k - 1][i] + qv[k][i]) * dp; } }
+      for (let i = 0; i < n; i++) M[i] = Math.hypot(U[i], V[i]);
+      return (S._ivt = { U, V, M });
+    }
+    function riverList() {                                   // connected IVT >= 250 corridors, at least ~2000 km long, outside the deep tropics
+      const S = st.surf || {}; if (S._ars) return S._ars; const f = ivtField(); if (!f) return [];
+      const n = NX * NY, seen = new Uint8Array(n), out = [];
+      for (let s0 = 0; s0 < n; s0++) {
+        if (seen[s0] || !(f.M[s0] >= 250)) continue;
+        const cells = [], stack = [s0]; seen[s0] = 1;
+        while (stack.length) { const c = stack.pop(); cells.push(c); const j = Math.floor(c / NX), i = c % NX;
+          for (const [dj, di] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const jj = j + dj; if (jj < 0 || jj >= NY) continue; const k = jj * NX + ((i + di + NX) % NX); if (!seen[k] && f.M[k] >= 250) { seen[k] = 1; stack.push(k); } } }
+        if (cells.length < 8) continue;
+        let best = cells[0], lat0 = 0, a = 1e9, b = -1e9, c0 = 1e9, d0 = -1e9;
+        for (const c of cells) { const la = 90 - Math.floor(c / NX); lat0 += la; if (f.M[c] > f.M[best]) best = c; a = Math.min(a, la); b = Math.max(b, la); }
+        lat0 /= cells.length; if (Math.abs(lat0) < 15) continue;
+        const lons = cells.map((c) => c % NX).sort((x, y) => x - y); let gap = 0, gi = 0;   // longitude extent on a circle
+        for (let k = 1; k < lons.length; k++) if (lons[k] - lons[k - 1] > gap) { gap = lons[k] - lons[k - 1]; gi = k; }
+        const span = Math.min(360 - Math.max(gap, 360 - (lons[lons.length - 1] - lons[0])), lons[lons.length - 1] - lons[0]);
+        const lenKm = Math.hypot(span * 111 * Math.cos(lat0 * Math.PI / 180), (b - a) * 111);
+        if (lenKm < 2000) continue;
+        out.push({ cells, max: f.M[best], lon: best % NX, lat: 90 - Math.floor(best / NX), lenKm: Math.round(lenKm) });
+      }
+      return (S._ars = out);
+    }
+    function midSystems() {                                  // closed lows and highs at 500 hPa (cut-off lows, monsoon mid-level cyclones, ridges)
+      const l5 = st.lev[500]; if (!l5 || !l5.hgt) return [];
+      if (l5._mid) return l5._mid; const h = l5.hgt, out = [], r = 6;
+      const at = (j, i) => h[Math.max(0, Math.min(NY - 1, j)) * NX + ((i + NX) % NX)];
+      for (let j = 15; j < NY - 15; j++) { const lat = 90 - j; if (Math.abs(lat) < 8 || Math.abs(lat) > 75) continue;
+        for (let i = 0; i < NX; i++) { const c = at(j, i); if (!isFinite(c)) continue; let mn = true, mx = true;
+          for (let dj = -r; dj <= r && (mn || mx); dj++) for (let di = -r; di <= r; di++) { if (!dj && !di) continue; const v = at(j + dj, i + di); if (v < c) mn = false; if (v > c) mx = false; }
+          if (!mn && !mx) continue; let ring = 0;
+          for (let k = 0; k < 16; k++) { const t = k * Math.PI / 8; ring += at(j + Math.round(r * Math.sin(t)), i + Math.round(r * Math.cos(t) / Math.max(0.3, Math.cos(lat * Math.PI / 180)))); }
+          ring /= 16; const depth = mn ? ring - c : c - ring;
+          if ((mn && depth >= 40) || (mx && depth >= 30)) out.push({ kind: mn ? "L" : "H", lon: i, lat, hgt: Math.round(c), depth: Math.round(depth) }); } }
+      out.sort((x, y) => y.depth - x.depth); const kept = [];                  // one marker per system: drop weaker ones within ~8 degrees
+      for (const m of out) if (!kept.some((k) => k.kind === m.kind && Math.abs(k.lat - m.lat) < 8 && Math.abs(((k.lon - m.lon + 540) % 360) - 180) < 8 / Math.max(.3, Math.cos(m.lat * Math.PI / 180)))) kept.push(m);
+      return (l5._mid = kept);
+    }
+    let AOD = null, aodState = "";                           // NASA GIBS: Terra+Aqua MODIS value-added aerosol optical depth, daily
+    function loadAOD() {
+      if (AOD || aodState === "loading") return; aodState = "loading";
+      const tryDay = (back) => { const d = new Date(Date.now() - back * 864e5).toISOString().slice(0, 10), img = new Image(); img.crossOrigin = "anonymous";
+        img.onload = () => { const c = document.createElement("canvas"); c.width = 2048; c.height = 1024; const g = c.getContext("2d"); g.drawImage(img, 0, 0, 2048, 1024);
+          try { AOD = { data: g.getImageData(0, 0, 2048, 1024).data, day: d, img: c }; aodState = "ok"; } catch (e) { aodState = "failed"; } draw(); opts.onAOD && opts.onAOD(aodState, d); };
+        img.onerror = () => { if (back < 3) tryDay(back + 1); else { aodState = "failed"; opts.onAOD && opts.onAOD("failed"); } };
+        img.src = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=MODIS_Combined_Value_Added_AOD&STYLES=&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=2048&HEIGHT=1024&FORMAT=image%2Fpng&TRANSPARENT=true&TIME=" + d; };
+      tryDay(1);
+    }
+    function drawAOD(step) {
+      if (!st.aod || !AOD) return; const w = Math.ceil(W / step), h = Math.ceil(H / step); scalarCanvas.width = w; scalarCanvas.height = h;
+      const img = sctx.createImageData(w, h), D = img.data, cx = W / 2, cy = H / 2, A = AOD.data;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const px = x * step + step / 2, py = y * step + step / 2;
+        if ((px - cx) ** 2 + (py - cy) ** 2 > R * R) continue; const ll = proj.invert([px, py]); if (!ll) continue;
+        const ix = Math.min(2047, Math.floor((ll[0] + 180) / 360 * 2048)), iy = Math.min(1023, Math.floor((90 - ll[1]) / 180 * 1024)), o2 = (iy * 2048 + ix) * 4;
+        if (A[o2 + 3] < 20) continue; const o = (y * w + x) * 4; D[o] = A[o2]; D[o + 1] = A[o2 + 1]; D[o + 2] = A[o2 + 2]; D[o + 3] = 215; }
+      sctx.putImageData(img, 0, 0); bctx.imageSmoothingEnabled = true; bctx.drawImage(scalarCanvas, 0, 0, w * step, h * step);
+    }
+    function drawScience() {
+      const P = PAL();
+      if (st.ar) for (const ar of riverList()) {
+        const m = new Float32Array(NX * NY); for (const c of ar.cells) m[c] = 1;
+        for (const l of gridLines(m, [0.5])) { bctx.beginPath(); path(l); bctx.strokeStyle = "#ff4fa3"; bctx.lineWidth = 2.4; bctx.stroke(); }
+        if (visible(ar.lon, ar.lat)) label(`Atmospheric river · ${Math.round(ar.max)} kg/m/s`, ar.lon, ar.lat, { size: 12, weight: 700, color: "#ff4fa3" });
+      }
+      if (st.mid && st.lev[500] && st.lev[500].hgt) {
+        for (const l of gridLines(st.lev[500].hgt, [5880])) { bctx.beginPath(); path(l); bctx.setLineDash([9, 5]); bctx.strokeStyle = "#ffb347"; bctx.lineWidth = 2.2; bctx.stroke(); bctx.setLineDash([]); }
+        for (const m of midSystems()) { if (!visible(m.lon, m.lat)) continue; const p = proj([m.lon, m.lat]);
+          bctx.beginPath(); bctx.arc(p[0], p[1], 13, 0, 2 * Math.PI); bctx.fillStyle = m.kind === "L" ? "rgba(70,120,230,.85)" : "rgba(235,140,40,.85)"; bctx.fill();
+          bctx.lineWidth = 2; bctx.strokeStyle = "#fff"; bctx.stroke();
+          bctx.font = "700 14px 'IBM Plex Sans', sans-serif"; bctx.textAlign = "center"; bctx.textBaseline = "middle"; bctx.fillStyle = "#fff"; bctx.fillText(m.kind, p[0], p[1] + 1);
+          if (st.k >= 1.3) label(`${m.kind === "L" ? "500 hPa low" : "500 hPa high"} · ${m.hgt.toLocaleString("en")} m`, m.lon, m.lat - 2.6, { size: 11, weight: 600, color: P.text }); }
+      }
+    }
     function scalarFor(name) {
+      if (name === "ivt") { const f = ivtField(); return f ? f.M : null; }
+      if (name === "sss") return (st.surf || {}).sss;
       const l = L(), S = st.surf || {};
       if (name === "hs") return S.hs;
       if (name === "curspd") { if (!S.cu) return null; if (!S.cspd) { S.cspd = new Float32Array(NX * NY); for (let i = 0; i < NX * NY; i++) S.cspd[i] = Math.hypot(S.cu[i], S.cv[i]); } return S.cspd; }
@@ -139,7 +231,7 @@
       return R;
     }
     function scalarArray() {
-      if (["tmp", "vort", "cape", "rain", "shear", "hs", "curspd"].includes(st.scalar)) return scalarFor(st.scalar);
+      if (["tmp", "vort", "cape", "rain", "shear", "hs", "curspd", "ivt", "sss"].includes(st.scalar)) return scalarFor(st.scalar);
       if (st.scalar === "pwat") return st.surf && st.surf.pwat;
       if (st.scalar === "sst") return st.surf && st.surf.sst;
       if (st.scalar === "rh") return L().rh;
@@ -176,7 +268,7 @@
         const px = x * step + step / 2, py = y * step + step / 2;
         if ((px - cx) ** 2 + (py - cy) ** 2 > R * R) continue;
         const ll = proj.invert([px, py]); if (!ll) continue;
-        const v = sample(a, ll[0], ll[1]); if (!isFinite(v) || (rainy && v < 0.5)) continue;
+        const v = sample(a, ll[0], ll[1]); if (!isFinite(v) || (rainy && v < 0.5) || (ramp.min != null && v < ramp.min)) continue;
         const t = Math.max(0, Math.min(255, Math.round((ramp.f(v) - ramp.lo) / (ramp.hi - ramp.lo) * 255))), c = ramp.lut[t], o = (y * w + x) * 4;
         D[o] = c[0]; D[o + 1] = c[1]; D[o + 2] = c[2]; D[o + 3] = 205;
       }
@@ -364,7 +456,7 @@
       const P = PAL();
       bctx.beginPath(); path({ type: "Sphere" }); bctx.fillStyle = P.sea; bctx.fill();
       if (land) { bctx.beginPath(); path(land); bctx.fillStyle = P.land; bctx.fill(); }
-      drawScalar(step);
+      drawScalar(step); drawAOD(step);
       bctx.beginPath(); path(d3.geoGraticule10()); bctx.strokeStyle = P.grat; bctx.lineWidth = 0.6; bctx.stroke();
       if (coast) { bctx.beginPath(); path(coast); bctx.strokeStyle = P.coast; bctx.lineWidth = 0.8; bctx.stroke(); }
       if (st.scalar === "sst" && st.surf && st.surf.sst && !st.dragging) {         // the 26.5 C line: warm enough for cyclones
@@ -375,7 +467,7 @@
         for (const c of (contourCache && contourCache.centres) || [])
           label(c.kind, c.lon, c.lat, { size: 22, weight: 700, color: c.kind === "H" ? "#7fb5ff" : "#ff8f8f" });
       }
-      drawOverlays();
+      drawOverlays(); if (!st.dragging) drawScience();
       if (st.storms) for (const s of st.storms) {
         const tr = s.track || []; if (tr.length > 1) { bctx.beginPath(); path({ type: "LineString", coordinates: tr.map((p) => [p[2], p[1]]) }); bctx.strokeStyle = "rgba(255,255,255,.85)"; bctx.lineWidth = 1.6; bctx.stroke(); }
         if (!visible(s.lon, s.lat)) continue; const p = proj([s.lon, s.lat]);
@@ -449,13 +541,20 @@
 
     // ---------------------------------------------------------------- interaction
     let drag = null, moved = false, marker = null;
-    flow.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, rot: st.rot.slice() }; moved = false; flow.setPointerCapture(e.pointerId); });
+    const touches = new Map(); let pinch = null;             // two fingers: pinch to zoom
+    flow.addEventListener("pointerdown", (e) => { touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touches.size === 2) { const [p1, p2] = [...touches.values()]; pinch = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]); drag = null; return; } drag = { x: e.clientX, y: e.clientY, rot: st.rot.slice() }; moved = false; flow.setPointerCapture(e.pointerId); });
     flow.addEventListener("pointermove", (e) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pinch && touches.size === 2) { const [p1, p2] = [...touches.values()], d1 = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]), d0 = pinch;
+        if (Math.abs(d1 - d0) > 4) { zoom(d0 / d1 < 1 ? 1 + (d1 / d0 - 1) : 1 / (1 + (d0 / d1 - 1))); pinch = d1; moved = true; } return; }
       if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; if (!moved) return;
       st.dragging = true; const f = 90 / R;
       st.rot = [drag.rot[0] + dx * f, Math.max(-75, Math.min(75, drag.rot[1] - dy * f))]; fctx.clearRect(0, 0, W, H); draw();
     });
-    flow.addEventListener("pointerup", (e) => {
+    const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+    flow.addEventListener("pointercancel", (e) => { endTouch(e); drag = null; });
+    flow.addEventListener("pointerup", (e) => { const wasPinch = !!pinch || touches.size > 1; endTouch(e); if (wasPinch) { drag = null; return; }
       const was = moved; drag = null; if (st.dragging) { st.dragging = false; resetParticles(); draw(); }
       if (!was) pick(e);
     });
@@ -478,6 +577,7 @@
         mslp: st.surf ? Math.round(sample(st.surf.mslp, lon, lat)) : null, pwat: st.surf ? Math.round(sample(st.surf.pwat, lon, lat)) : null,
         sst: st.surf ? sample(st.surf.sst, lon, lat) : null, tmp: sample(l.tmp, lon, lat), cape: st.surf ? sample(st.surf.cape, lon, lat) : NaN,
         rain: st.surf ? sample(st.surf.rain6, lon, lat) : NaN, vort: l.u ? sample(vorticity(l), lon, lat) : NaN,
+        ivt: st.surf && st.surf._ivt ? sample(st.surf._ivt.M, lon, lat) : NaN, sss: st.surf && st.surf.sss ? sample(st.surf.sss, lon, lat) : NaN,
         hs: st.surf ? sample(st.surf.hs, lon, lat) : NaN, wto: st.surf && st.surf.wu ? DIRS[Math.round(((Math.atan2(sample(st.surf.wu, lon, lat), sample(st.surf.wv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null,
         cur: st.surf && st.surf.cu ? Math.hypot(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) : NaN,
         cto: st.surf && st.surf.cu ? DIRS[Math.round(((Math.atan2(sample(st.surf.cu, lon, lat), sample(st.surf.cv, lon, lat)) * 180 / Math.PI + 360) % 360) / 22.5) % 16] : null };
@@ -489,8 +589,11 @@
       setTime, time: () => st.t, scalarFor, rampFor,
       load, setLevel, levels: () => (st.meta ? st.meta.levels : []), meta: () => st.meta, LEVEL_INFO, RAMPS,
       async set(k, v) { st[k] = v; if (k === "level") return setLevel(v);
+        if ((k === "scalar" && v === "ivt") || (k === "ar" && v)) await ensureLevels();
+        if (k === "mid" && v) await ensureLevels([500]);
+        if (k === "aod" && v) loadAOD();
         if (k === "scalar" && v === "shear") { await levelData(850); await levelData(200); } if (k === "wind" && !v) fctx.clearRect(0, 0, W, H); if (k === "wind" && v) resetParticles(); draw(); },
-      get: (k) => st[k], monoFlow: () => !st.flowColor, setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
+      get: (k) => st[k], monoFlow: () => !st.flowColor, rivers: () => riverList(), midSystems: () => midSystems(), aod: () => (AOD ? { day: AOD.day, canvas: AOD.img } : null), aodState: () => aodState, setStorms(list) { st.storms = list; draw(); }, getView: () => ({ lon: Math.round(-st.rot[0] * 10) / 10, lat: Math.round(-st.rot[1] * 10) / 10, k: Math.round(st.k * 100) / 100 }), theme() { resetParticles(); draw(); }, setForecast(fc) { st.fc = fc; draw(); }, setTowns(list, show) { st.towns = list; st.showTowns = show; draw(); }, select(k) { st.sel = k; draw(); }, setClimate(c) { st.climate = c; draw(); },
       focus(lon, lat, kk) { st.rot = [-lon, -lat]; if (kk) st.k = kk; useLand(); resetParticles(); draw(); },
       zoomIn: () => zoom(1.4), zoomOut: () => zoom(1 / 1.4), redraw: () => { resize(); },
       pause(p) { running = !p; },

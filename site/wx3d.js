@@ -219,12 +219,19 @@
 
     // ---- interaction
     let drag = null, moved = false;
-    canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; moved = false; canvas.setPointerCapture(e.pointerId); });
+    const touches = new Map(); let pinch = null;             // two fingers: pinch to zoom
+    canvas.addEventListener("pointerdown", (e) => { touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touches.size === 2) { const [p1, p2] = [...touches.values()]; pinch = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]); drag = null; return; } drag = { x: e.clientX, y: e.clientY }; moved = false; canvas.setPointerCapture(e.pointerId); });
     canvas.addEventListener("pointermove", (e) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pinch && touches.size === 2) { const [p1, p2] = [...touches.values()], d1 = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]), d0 = pinch;
+        if (Math.abs(d1 - d0) > 4) { zoom(d0 / d1); pinch = d1; moved = true; } return; }
       if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
       const k = 0.005 * (dist - 1) / 2.6; globe.rotation.y += dx * k; globe.rotation.x = Math.max(-1.3, Math.min(1.3, globe.rotation.x + dy * k)); drag = { x: e.clientX, y: e.clientY };
     });
-    canvas.addEventListener("pointerup", (e) => { if (!moved) pick(e); drag = null; });
+    const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+    canvas.addEventListener("pointercancel", (e) => { endTouch(e); drag = null; });
+    canvas.addEventListener("pointerup", (e) => { const wasPinch = !!pinch || touches.size > 1; endTouch(e); if (wasPinch) { drag = null; return; } if (!moved) pick(e); drag = null; });
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoom(e.deltaY < 0 ? 1 / 1.12 : 1.12); }, { passive: false });
     const zoom = (f) => { dist = Math.max(1.06, Math.min(7, 1 + (dist - 1) * f)); };
     const ray = new T.Raycaster(), ndc = new T.Vector2();
@@ -269,7 +276,7 @@
     return {
       refresh, focus, zoomIn: () => zoom(1 / 1.3), zoomOut: () => zoom(1.3), pause(p) { st.running = !p; }, redraw: resize,
       async set(k, v) { st[k] = v; if (k === "labels") return; if (k === "storms") return buildStorms(); if (k === "contours") return buildContours(); if (k === "scalar") return paintOverlay(); await refresh(); },
-      setStorms(list) { st.storms_ = list; buildStorms(); }, get: (k) => st[k], setForecast, select() {}, setTowns() {},
+      setStorms(list) { st.storms_ = list; buildStorms(); }, centre: () => viewCentre(), get: (k) => st[k], setForecast, select() {}, setTowns() {},
     };
   }
   window.Wx3D = { create, ALT_KM };

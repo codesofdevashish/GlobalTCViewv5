@@ -207,7 +207,7 @@
     mapReady = (async () => {
       if (!window.WxMap) return;
       $("#wx").hidden = false;                                     // the flat map holds the data; build it visible once, then hide it
-      wx = window.WxMap.create($("#wx"), { onPick: info, onStorm: (k) => stormPanel(k), onTown: townPopup });
+      wx = window.WxMap.create($("#wx"), { onPick: info, onStorm: (k) => stormPanel(k), onTown: townPopup, onAOD: () => legend() });
       try {
         const meta = await wx.load("data/wx/");
         const sl = $("#lv"); sl.max = meta.levels.length - 1; sl.value = Math.max(0, meta.levels.indexOf(850));
@@ -320,10 +320,60 @@
   $$('input[name="flow"]').forEach((r) => r.addEventListener("change", async () => {
     if (!r.checked) return; await initMap();
     if (wx) await wx.set("flow", r.value); if (wx3) { if (r.value !== "wind" && wx3.get("mode") === "stack") { $("#ly-stack").checked = false; await wx3.set("mode", "single"); } await wx3.set("flow", r.value); }
-    if (r.value !== "wind") { const sc = r.value === "waves" ? "hs" : "curspd"; const rr = $(`input[name="scalar"][value="${sc}"]`); if (rr && !rr.checked) { rr.checked = true; rr.dispatchEvent(new Event("change")); } }
+    const cur = $('input[name="scalar"]:checked');                       // only replace the default wind-speed colours
+    if (r.value !== "wind" && !applying && (!cur || cur.value === "speed")) { const sc = r.value === "waves" ? "hs" : "curspd"; const rr = $(`input[name="scalar"][value="${sc}"]`); if (rr && !rr.checked) { rr.checked = true; rr.dispatchEvent(new Event("change")); } }
     legend();
   }));
   $("#ly-flowcol").addEventListener("change", (e) => { both((m) => m.set("flowColor", e.target.checked)); legend(); });
+  // model: NOAA GFS or ECMWF IFS (open data)
+  let MODEL = "gfs";
+  async function setModel(m) {
+    await initMap(); if (!wx || m === MODEL) return; const keep = MODEL;
+    try {
+      const meta = await wx.load(m === "ecmwf" ? "data/wx_ecmwf/" : "data/wx/"); MODEL = m;
+      const tm = $("#tm"), times = meta.times || []; tm.max = Math.max(0, times.length - 1); tm.value = meta.now || 0; $(".timebar").hidden = times.length < 2; timeLabel();
+      $("#wx-time").textContent = t("map.time2", { m: m === "ecmwf" ? "ECMWF IFS" : "NOAA GFS", t: when(toMs(meta.cycle)) });
+      for (const p of ["ar", "mid", "aod"]) if ($(`#ly-${p}`).checked) await wx.set(p, true);
+      if (wx3) await wx3.refresh();
+    } catch (e) { MODEL = keep; $("#wx-time").textContent = t("md.none"); }
+    $$(".seg2").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.model === MODEL))); legend(); writeMapState();
+  }
+  $$(".seg2").forEach((b) => b.addEventListener("click", () => setModel(b.dataset.model)));
+  // detections drawn on the flat map
+  for (const id of ["ar", "mid", "aod"]) $(`#ly-${id}`).addEventListener("change", async (e) => {
+    await initMap(); if (!wx) return; if (e.target.checked && MODE !== "2d") setMode("2d");
+    await wx.set(id, e.target.checked); legend();
+  });
+  // a reading at the centre of the view
+  function centreRead() {
+    const box = $("#centre-read"); if (!wx || !$("#ly-centre").checked || document.body.dataset.view !== "map") { box.hidden = true; return; }
+    const c = MODE === "3d" && wx3 && wx3.centre ? wx3.centre() : (() => { const g = wx.getView(); return [g.lat, g.lon]; })();
+    const r = wx.readout(c[1], c[0]); box.hidden = false; const lo = ((c[1] + 540) % 360) - 180;
+    const bits = [`${Math.abs(c[0]).toFixed(1)}°${c[0] >= 0 ? "N" : "S"} ${Math.abs(lo).toFixed(1)}°${lo >= 0 ? "E" : "W"}`];
+    if (r.wind_kmh != null) bits.push(`${r.wind_kmh} ${t("unit.kmh")} ${t(`dir16.${r.from}`, {}, r.from)}`);
+    if (r.mslp) bits.push(`${r.mslp} hPa`); if (isFinite(r.ivt)) bits.push(`IVT ${Math.round(r.ivt)}`); if (r.sst != null && isFinite(r.sst)) bits.push(`SST ${r.sst.toFixed(1)} °C`);
+    if (isFinite(r.sss)) bits.push(`${r.sss.toFixed(1)} PSU`);
+    $("#centre-text").textContent = bits.join(" · ");
+  }
+  $("#ly-centre").addEventListener("change", centreRead); setInterval(centreRead, 700);
+  // find a place (bundled place names, or "lat, lon") and reset the globe
+  $("#placefind").addEventListener("submit", async (e) => {
+    e.preventDefault(); const q = $("#pf-q").value.trim(); if (!q) return; await initMap();
+    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) { both((x) => x.focus(+m[2], +m[1], 3)); return; }
+    const P = await window.WxMap.places(), lq = q.toLowerCase();
+    const hit = P.find((p) => p[0].toLowerCase() === lq || (p[5] && p[5] === q)) || P.find((p) => p[0].toLowerCase().startsWith(lq));
+    if (hit) both((x) => x.focus(hit[2], hit[1], 3)); else $("#pf-q").setCustomValidity(t("pf.none")), $("#pf-q").reportValidity(), setTimeout(() => $("#pf-q").setCustomValidity(""), 1500);
+  });
+  $("#pf-q").addEventListener("focus", async () => { const dl = $("#pf-list"); if (dl.childElementCount) return;
+    for (const p of (await window.WxMap.places()).slice(0, 1500)) dl.append(el("option", { value: p[0] })); }, { once: true });
+  $("#pf-reset").addEventListener("click", async () => { await initMap(); both((x) => x.focus(80, 15, 1)); });
+  // one-click scenes
+  const SCENES = { ar: "view=2d&flow=wind&layer=ivt&level=850&ar=1&lon=-145&lat=35&z=1.25", ridge: "view=2d&flow=wind&layer=speed&level=500&mid=1&lon=130&lat=20&z=1.25",
+    monsoon: "view=2d&flow=wind&layer=vort&level=500&mid=1&lon=85&lat=20&z=1.5", itf: "view=2d&flow=currents&layer=sss&lon=120&lat=-5&z=3", aod: "view=2d&flow=wind&layer=none&aod=1&lon=60&lat=22&z=1.15" };
+  $$("[data-scene]").forEach((b) => b.addEventListener("click", () => { location.hash = `#map?${SCENES[b.dataset.scene]}`; }));
+  // phones: the layers panel opens from a button
+  $("#ly-toggle").addEventListener("click", () => { const p = $("#layers-panel"), open = !p.classList.contains("open"); p.classList.toggle("open", open); $("#ly-toggle").setAttribute("aria-expanded", String(open)); });
   $("#ly-labels").addEventListener("change", (e) => both((m) => m.set("labels", e.target.checked)));
   $$('input[name="scalar"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) { both((m) => m.set("scalar", r.value)); legend(); } }));
   $$(".chip[data-ov]").forEach((b) => b.addEventListener("click", async () => {
@@ -347,6 +397,12 @@
     else if (wx.get("wind") && fl === "waves") box.append(...bar(t("lg.flwaves"), F.stops, 0, 12, "m"));
     else if (wx.get("wind") && fl === "currents") box.append(...bar(t("lg.flcur"), F.stops, 0, 2, "m/s"));
     else if (wx.get("wind")) box.append(...bar(t(R ? "lg.flow2" : "lg.flow"), F.stops, F.lo, F.hi, unitK));
+    if (wx.get("ar")) box.append(el("p", { class: "note", text: t("lg.ar") }));
+    if (wx.get("mid")) box.append(el("p", { class: "note", text: t("lg.mid") }));
+    if (wx.get("aod")) { const a = wx.aod(), stt = wx.aodState();
+      box.append(...bar(t("lg.aod", { d: a ? a.day : "" }), ["#fff7c4", "#fcd56b", "#f59d3d", "#e0562b", "#a3271e", "#5a1210"], 0, 1, ""));
+      if (stt === "failed") box.append(el("p", { class: "note", text: t("lg.aodfail") })); }
+    if (MODEL === "ecmwf") box.append(el("p", { class: "note", text: t("lg.ecmwf") }));
     const p = wx.levels()[+$("#lv").value];
     if (wx.get("contours")) box.append(el("p", { class: "note", text: p === 1000 ? t("lg.iso") : t("lg.hgt", { p, s: p >= 700 ? 30 : p >= 500 ? 60 : 120 }) }));
     if (MODE === "3d" && wx3) box.append(el("p", { class: "note", text: t("lg.3d", { x: wx3.get("mode") === "stack" ? 75 : 38 }) }));
@@ -360,6 +416,7 @@
     const s2 = []; if (r.mslp) s2.push(t("rd.mslp", { v: r.mslp })); if (isFinite(r.pwat)) s2.push(t("rd.pwat", { v: r.pwat }));
     if (r.sst != null && isFinite(r.sst)) s2.push(t("rd.sst", { v: r.sst.toFixed(1) }) + (r.sst >= 26.5 ? t("rd.warm") : ""));
     if (isFinite(r.tmp)) a.push(t("rd.tmp", { v: r.tmp.toFixed(1) })); if (isFinite(r.vort)) a.push(t("rd.vort", { v: r.vort.toFixed(1) }));
+    if (isFinite(r.ivt)) s2.push(t("rd.ivt", { v: Math.round(r.ivt) })); if (isFinite(r.sss)) s2.push(t("rd.sss", { v: r.sss.toFixed(1) }));
     if (isFinite(r.hs)) s2.push(t("rd.hs", { v: r.hs.toFixed(1), dir: t(`dir16.${r.wto}`, {}, r.wto) }));
     if (isFinite(r.cur) && r.cur > 0.02) s2.push(t("rd.cur", { v: r.cur.toFixed(2), dir: t(`dir16.${r.cto}`, {}, r.cto) }));
     if (isFinite(r.cape)) s2.push(t("rd.cape", { v: Math.round(r.cape) })); if (isFinite(r.rain)) s2.push(t("rd.rain", { v: r.rain.toFixed(1) }));
@@ -458,9 +515,11 @@
       if (q.get("view")) setMode(q.get("view") === "3d" ? "3d" : "2d");
       const lv = +q.get("level"); if (lv) { const i = wx.levels().indexOf(lv); if (i >= 0) { $("#lv").value = i; $("#lv").dispatchEvent(new Event("input")); } }
       const tq = q.get("t"); if (tq != null && wx.meta() && wx.meta().times) { const i = wx.meta().times.findIndex((x) => x.offset_h === +tq); if (i >= 0) await goTime(i); }
-      for (const [name, key] of [["scalar", "layer"], ["flow", "flow"]]) { const v = q.get(key); const r = v && $(`input[name="${name}"][value="${v}"]`); if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event("change")); } }
+      for (const [name, key] of [["flow", "flow"], ["scalar", "layer"]]) { const v = q.get(key); const r = v && $(`input[name="${name}"][value="${v}"]`); if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event("change")); } }
       for (const ov of (q.get("ov") || "").split(",").filter(Boolean)) { const c = $(`.chip[data-ov="${ov}"]`); if (c && c.getAttribute("aria-pressed") !== "true") c.click(); }
       if (q.get("lon") && q.get("lat")) both((m) => m.focus(+q.get("lon"), +q.get("lat"), +q.get("z") || 1.6));
+      if (q.get("model") && q.get("model") !== MODEL) await setModel(q.get("model"));
+      for (const p of ["ar", "mid", "aod"]) { const want = q.get(p) === "1", box = $(`#ly-${p}`); if (box.checked !== want) { box.checked = want; await wx.set(p, want); } }
       if (q.get("stack") === "1" && wx3) { $("#ly-stack").checked = true; $("#ly-stack").dispatchEvent(new Event("change")); }
     } finally { applying = false; writeMapState(); }
   }
@@ -472,6 +531,7 @@
     const ov = $$('.chip[data-ov][aria-pressed="true"]').map((c) => c.dataset.ov); if (ov.length) q.set("ov", ov.join(","));
     if (MODE === "2d" && wx.getView) { const g = wx.getView(); q.set("lon", g.lon); q.set("lat", g.lat); q.set("z", g.k); }
     if (wx3 && MODE === "3d" && $("#ly-stack").checked) q.set("stack", "1");
+    if (MODEL !== "gfs") q.set("model", MODEL); for (const p of ["ar", "mid", "aod"]) if ($(`#ly-${p}`).checked) q.set(p, "1");
     return q.toString();
   }
   let wTimer = null;
@@ -500,8 +560,8 @@
       if (G.length) { $("#ab-guides").hidden = false;
         for (const g of G) $("#ab-guide-list").append(el("li", {}, [g.link ? el("a", { href: g.link, target: "_blank", rel: "noopener", text: g.name }) : el("b", { text: g.name }), g.affiliation ? el("span", { text: g.affiliation }) : null])); } }
     const copy = async (btn, text) => { const old = btn.textContent; try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; } catch (e) { btn.textContent = "Copy failed"; } setTimeout(() => { btn.textContent = old; }, 1600); };
-    const plain = "Singh, D. P. (2026). GlobalTCView. Zenodo. https://doi.org/10.5281/zenodo.24157024";
-    const bib = "@software{singh_globaltcview_2026,\n  author    = {Singh, Devashish Prakash},\n  title     = {GlobalTCView},\n  year      = {2026},\n  publisher = {Zenodo},\n  doi       = {10.5281/zenodo.24157024},\n  url       = {https://doi.org/10.5281/zenodo.24157024}\n}";
+    const plain = "Singh, D. P., Rathinasamy, M., & Upadhyaya, S. (2026). GlobalTCView: daily 3D views, forecasts and impact estimates for every tropical cyclone on Earth (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.24157025";
+    const bib = "@software{singh_globaltcview_2026,\n  author    = {Singh, Devashish Prakash and Rathinasamy, Maheswaran and Upadhyaya, Shruti},\n  title     = {GlobalTCView: daily 3D views, forecasts and impact estimates for every tropical cyclone on Earth},\n  year      = {2026},\n  version   = {v1.0.0},\n  publisher = {Zenodo},\n  doi       = {10.5281/zenodo.24157025},\n  url       = {https://doi.org/10.5281/zenodo.24157025}\n}";
     if ($("#ab-copy")) { $("#ab-copy").addEventListener("click", (e) => copy(e.currentTarget, plain)); $("#ab-bib").addEventListener("click", (e) => copy(e.currentTarget, bib)); }
   })();
   function openStorm(key) { show("analysis"); const go = () => { if (window.TCDash && window.TCDash.open(key)) return; setTimeout(go, 200); }; go(); }

@@ -180,12 +180,12 @@
 
   <section class="ab-block" aria-labelledby="ab-data"><h2 id="ab-data" data-i18n="abp.data">Data</h2>
     <dl class="ab-data">
-      <div><dt data-i18n="abp.d1">Weather</dt><dd>NOAA NCEP GFS 0.25° and 1° analyses and forecasts; GEFS ensemble tracks</dd></div>
+      <div><dt data-i18n="abp.d1">Weather</dt><dd>NOAA NCEP GFS 0.25° and 1° analyses and forecasts; GEFS ensemble tracks; ECMWF IFS open data (CC BY 4.0)</dd></div>
       <div><dt data-i18n="abp.d2">Storms</dt><dd>NCEP TCVitals (NHC, CPHC, JTWC, IMD and other centres); IBTrACS v04r01 (NOAA NCEI)</dd></div>
-      <div><dt data-i18n="abp.d3">Ocean</dt><dd>NOAA GFS-Wave (WaveWatch III) waves; NOAA RTOFS currents via CoastWatch ERDDAP</dd></div>
+      <div><dt data-i18n="abp.d3">Ocean</dt><dd>NOAA GFS-Wave (WaveWatch III) waves; NOAA RTOFS currents and salinity via CoastWatch ERDDAP</dd></div>
       <div><dt data-i18n="abp.d4">Exposure</dt><dd>GHSL GHS-POP 2025 (EU JRC); World Bank indicators; NOAA ETOPO1 elevation and depth</dd></div>
       <div><dt data-i18n="abp.d5">Climate</dt><dd>NOAA CPC (ONI), NOAA PSL (DMI), Australian Bureau of Meteorology (MJO)</dd></div>
-      <div><dt data-i18n="abp.d6">Maps</dt><dd>NASA Blue Marble and GIBS imagery; Natural Earth coastlines and places</dd></div>
+      <div><dt data-i18n="abp.d6">Maps</dt><dd>NASA Blue Marble and GIBS imagery, including MODIS aerosol optical depth; Natural Earth coastlines and places</dd></div>
     </dl></section>
 
   <section class="ab-block" aria-labelledby="ab-meth"><h2 id="ab-meth" data-i18n="abp.ml">Methods and limits</h2>
@@ -212,8 +212,7 @@
       <div class="ab-guides" id="ab-guides" hidden><h3 data-i18n="abp.guided">Guided by</h3><ul id="ab-guide-list"></ul></div></div>
     <div class="ab-cite"><h2 data-i18n="abp.cite">Cite and reuse</h2>
       <p data-i18n="abp.citep">Open source under the MIT licence; the data keep their providers' licences. Please cite:</p>
-      <p class="cite" id="ab-cite-text">Singh, D. P., Upadhyaya, S., &amp; Rathinasamy, M. (2026). <i>GlobalTCView: daily 3D views, forecasts and impact estimates for every tropical cyclone on Earth</i> [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.24157024</a></p>
-      <p class="cite-ver">This DOI always points to the latest version. Version 1.1.0: <a href="https://doi.org/10.5281/zenodo.24242401" target="_blank" rel="noopener">10.5281/zenodo.24242401</a></p>
+      <p class="cite" id="ab-cite-text">Singh, D. P., Rathinasamy, M., &amp; Upadhyaya, S. (2026). <i>GlobalTCView: daily 3D views, forecasts and impact estimates for every tropical cyclone on Earth</i> (Version v1.0.0) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.24157025" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.24157025</a></p>
       <p class="ab-btns"><button type="button" class="btn" id="ab-copy" data-i18n="abp.copy">Copy citation</button> <button type="button" class="btn ghost" id="ab-bib" data-i18n="abp.bib">Copy BibTeX</button>
         <a href="https://doi.org/10.5281/zenodo.24157024" target="_blank" rel="noopener" class="ab-badge"><img src="https://zenodo.org/badge/1449072755.svg" alt="DOI 10.5281/zenodo.24157024" height="20"></a></p></div>
   </section>
@@ -221,14 +220,30 @@
 
 <!-- ======================= LIVE MAP ======================= -->
 <section id="view-map" class="view mapview" aria-label="Live map of the atmosphere">
+  <button type="button" class="ly-toggle" id="ly-toggle" aria-expanded="false" aria-controls="layers-panel" data-i18n="ly.h">Layers</button>
+  <div class="centre-read" id="centre-read" hidden><span class="cross" aria-hidden="true"></span><div id="centre-text"></div></div>
   <div id="wx" class="wx-stage" role="img" aria-label="Flat map with wind streamlines and weather layers" hidden></div>
   <div id="wx3d" class="wx-stage" role="img" aria-label="3D globe with wind streamlines at the chosen height"></div>
-  <aside class="layers" aria-labelledby="ly-h">
+  <aside class="layers" id="layers-panel" aria-labelledby="ly-h">
     <div class="viewseg" role="group" aria-label="Map view">
       <button type="button" class="seg" data-mode="3d" aria-pressed="true" data-i18n="v.3d">3D globe</button>
       <button type="button" class="seg" data-mode="2d" aria-pressed="false" data-i18n="v.2d">Flat map</button>
     </div>
     <label class="tgl" id="stack-row"><input type="checkbox" id="ly-stack"> <span data-i18n="v.stack">All heights at once (3D vortex)</span></label>
+    <div class="modelseg" role="group" aria-label="Weather model">
+      <span data-i18n="md.h">Model</span>
+      <button type="button" class="seg2" data-model="gfs" aria-pressed="true">NOAA GFS</button>
+      <button type="button" class="seg2" data-model="ecmwf" aria-pressed="false">ECMWF IFS</button>
+    </div>
+    <form class="placefind" id="placefind" role="search"><label class="sr" for="pf-q">Find a place</label>
+      <input id="pf-q" list="pf-list" autocomplete="off" placeholder="Find a place, or lat, lon" data-i18n-ph="pf.ph"><datalist id="pf-list"></datalist>
+      <button type="submit" class="tb" aria-label="Go">→</button><button type="button" class="tb" id="pf-reset" data-i18n="pf.reset" title="Back to the whole globe">Reset</button></form>
+    <div class="scenes" aria-label="Scenes"><span data-i18n="sc.h">Scenes</span>
+      <button type="button" class="chip-l" data-scene="ar" data-i18n="sc.ar">Atmospheric rivers</button>
+      <button type="button" class="chip-l" data-scene="ridge" data-i18n="sc.ridge">Steering ridge</button>
+      <button type="button" class="chip-l" data-scene="monsoon" data-i18n="sc.monsoon">Mid-level lows</button>
+      <button type="button" class="chip-l" data-scene="itf" data-i18n="sc.itf">Indonesian Throughflow</button>
+      <button type="button" class="chip-l" data-scene="aod" data-i18n="sc.aod">Smoke and dust</button></div>
     <button type="button" class="tb wide" id="copy-view" data-i18n="ly.copy">Copy a link to this view</button>
     <h2 id="ly-h" data-i18n="ly.h">Layers</h2>
     <label class="tgl"><input type="checkbox" id="ly-wind" checked> <span data-i18n="ly.wind">Wind flow</span></label>
@@ -246,6 +261,8 @@
     <label class="opt"><input type="radio" name="scalar" value="pwat"> <span data-i18n="ly.pwat">Water vapour in the air</span></label>
     <label class="opt"><input type="radio" name="scalar" value="rh"> <span data-i18n="ly.rh">Humidity at this level</span></label>
     <label class="opt"><input type="radio" name="scalar" value="sst"> <span data-i18n="ly.sst">Sea surface temperature</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="ivt"> <span data-i18n="ly.ivt">Water vapour transport (IVT)</span></label>
+    <label class="opt"><input type="radio" name="scalar" value="sss"> <span data-i18n="ly.sss">Sea surface salinity</span></label>
     <label class="opt"><input type="radio" name="scalar" value="hs"> <span data-i18n="ly.hs">Sea wave height</span></label>
     <label class="opt"><input type="radio" name="scalar" value="curspd"> <span data-i18n="ly.curspd">Ocean current speed</span></label>
     <label class="opt"><input type="radio" name="scalar" value="tmp"> <span data-i18n="ly.tmp">Temperature at this height</span></label>
@@ -254,6 +271,11 @@
     <label class="opt"><input type="radio" name="scalar" value="cape"> <span data-i18n="ly.cape">Thunderstorm energy (CAPE)</span></label>
     <label class="opt"><input type="radio" name="scalar" value="rain"> <span data-i18n="ly.rain">Rain in 6 hours (forecast)</span></label>
     <label class="opt"><input type="radio" name="scalar" value="none"> <span data-i18n="ly.none">Nothing</span></label>
+    <h3 data-i18n="dt.h">Detect and show</h3>
+    <label class="tgl"><input type="checkbox" id="ly-ar"> <span data-i18n="dt.ar">Atmospheric rivers</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-mid"> <span data-i18n="dt.mid">Mid-level lows and highs (500 hPa)</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-aod"> <span data-i18n="dt.aod">Aerosols: smoke and dust (NASA)</span></label>
+    <label class="tgl"><input type="checkbox" id="ly-centre"> <span data-i18n="dt.centre">Reading at the map centre</span></label>
     <h3 data-i18n="ly.explain">Explain the circulation</h3>
     <button type="button" class="chip" data-ov="cells" aria-pressed="false" data-i18n="ov.cells">Hadley, Ferrel and polar cells</button>
     <button type="button" class="chip" data-ov="walker" aria-pressed="false" data-i18n="ov.walker">Walker circulation</button>
@@ -449,7 +471,7 @@
   <article class="essay">
     <h1 id="learn-h" data-i18n="learn.h">How the atmosphere makes and moves tropical cyclones</h1>
     <p class="lede" data-i18n="learn.lede">Six short explanations, each linked to today's live map, plus an interactive lab where you can build a cyclone from its ingredients.</p>
-    <nav class="l-toc" aria-label="On this page"><a href="#l-cells" data-i18n="toc.1">Circulation cells</a><a href="#l-walker" data-i18n="toc.2">Walker and El Niño</a><a href="#l-tc" data-i18n="toc.3">What a cyclone needs</a><a href="#l-game" data-i18n="toc.4">Cyclone lab</a><a href="#l-surge" data-i18n="toc.5">Surge and extreme rain</a><a href="#l-scale" data-i18n="toc.6">How strong is it?</a><a href="#l-read" data-i18n="toc.7">Reading the map</a></nav>
+    <nav class="l-toc" aria-label="On this page"><a href="#l-cells" data-i18n="toc.1">Circulation cells</a><a href="#l-walker" data-i18n="toc.2">Walker and El Niño</a><a href="#l-tc" data-i18n="toc.3">What a cyclone needs</a><a href="#l-game" data-i18n="toc.4">Cyclone lab</a><a href="#l-surge" data-i18n="toc.5">Surge and extreme rain</a><a href="#l-ar" data-i18n="toc.8">Rivers in the sky and aerosols</a><a href="#l-scale" data-i18n="toc.6">How strong is it?</a><a href="#l-read" data-i18n="toc.7">Reading the map</a></nav>
 
     <section id="l-cells" aria-labelledby="l1">
       <h2 id="l1" data-i18n="learn.h1">The three circulation cells</h2>
@@ -539,6 +561,16 @@
       <p><strong>Extreme rain</strong> depends less on a storm's strength than on how long it stays. Rainbands drop heavy rain wherever they pass, so a <strong>slow-moving</strong> or stalled storm, even a weak one, can drop a month's rain in a day or two, and moist air pushed up hills adds more. IMD calls 64.5 mm in a day heavy, 115.6 mm very heavy and 204.5 mm extremely heavy: these are the classes in the Impact view's rain maps.</p>
       <a class="see-map" href="#map?view=2d&layer=rain&t=24&level=1000" data-i18n="see.rain">See tomorrow\'s 6-hour rain on the live map →</a>
       <div class="quiz" data-quiz="surge"></div>
+    </section>
+
+    <section id="l-ar" aria-labelledby="l7">
+      <h2 id="l7">Atmospheric rivers, mid-level systems and aerosols</h2>
+      <p><strong>Atmospheric rivers</strong> are long, narrow corridors that carry enormous amounts of water vapour, often thousands of kilometres from the tropics towards the poles. The site measures them with <strong>integrated vapour transport (IVT)</strong>: the moisture in each layer of air multiplied by the wind, added up from the surface to about 9 km. Where IVT is at least 250 kg of water per metre per second along a corridor more than 2000 km long, outside the deep tropics, the map outlines it as an atmospheric river. When they hit mountains, they can bring days of extreme rain.</p>
+      <p><strong>Mid-level systems</strong> at 500 hPa, about 5.5 km up, steer tropical cyclones. The <strong>subtropical ridge</strong>, traced by the 5880 m height line, pushes storms westward along its southern edge; a <strong>trough</strong> or a closed low to the west can turn them north and east. Over India, slow <strong>mid-tropospheric lows</strong> during the monsoon bring very heavy rain.</p>
+      <p><strong>Aerosols</strong> are tiny particles of smoke, dust, sea salt and pollution. NASA's satellites measure how much they dim sunlight (the aerosol optical depth). They seed clouds and can change rainfall; dust from the Sahara can even weaken Atlantic storms by bringing dry, stable air.</p>
+      <a class="see-map" href="#map?view=2d&flow=wind&layer=ivt&level=850&ar=1&lon=-145&lat=35&z=1.25">See today's atmospheric rivers →</a>
+      <a class="see-map" href="#map?view=2d&flow=wind&layer=speed&level=500&mid=1&lon=130&lat=20&z=1.25">See the steering ridge →</a>
+      <a class="see-map" href="#map?view=2d&flow=wind&layer=none&aod=1&lon=60&lat=22&z=1.15">See smoke and dust →</a>
     </section>
 
     <section id="l-scale" aria-labelledby="l4">
