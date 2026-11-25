@@ -75,9 +75,9 @@ def build(public, sess=None):
     if run is None:
         print("::warning::ECMWF: no complete open-data run found"); return None
     print(f"ECMWF: using IFS {run:%Y-%m-%d %H}Z")
-    want = {(p, "sfc", None) for p in ("msl", "tcwv", "10u", "10v", "tp")} | {(p, "pl", L) for p in ("u", "v", "gh", "r", "t") for L in PL}
+    want = {(p, "sfc", None) for p in ("msl", "tcwv", "10u", "10v", "tp", "2t", "2d")} | {(p, "pl", L) for p in ("u", "v", "gh", "r", "t", "w") for L in PL}
     times, prev_tp = [], {}
-    for step in (0, 24, 48, 72, 96, 120):
+    for step in range(0, 121, 12):
         try:
             f = fetch(run, step, want, sess)
             if not f: print(f"::warning::ECMWF: no data at +{step} h"); continue
@@ -88,8 +88,14 @@ def build(public, sess=None):
             g = lambda k: f.get(k)
             fields = {("PRMSL", "mean sea level"): g(("msl", "sfc", None)), ("PWAT", "entire atmosphere (considered as a single layer)"): g(("tcwv", "sfc", None)),
                       ("UGRD", "10 m above ground"): g(("10u", "sfc", None)), ("VGRD", "10 m above ground"): g(("10v", "sfc", None)), ("APCP", "surface"): tp6}
+            t2, d2 = g(("2t", "sfc", None)), g(("2d", "sfc", None))
+            if t2 is not None:                                                   # 2 m humidity from the dewpoint (Magnus formula)
+                fields[("TMP", "2 m above ground")] = t2
+                if d2 is not None:
+                    es = lambda T: 6.112 * np.exp(17.67 * (T - 273.15) / (T - 29.65))
+                    fields[("RH", "2 m above ground")] = np.clip(100 * es(d2) / es(t2), 0, 100)
             for L in PL:
-                for ec, gf in (("u", "UGRD"), ("v", "VGRD"), ("gh", "HGT"), ("r", "RH"), ("t", "TMP")): fields[(gf, f"{L} mb")] = g((ec, "pl", L))
+                for ec, gf in (("u", "UGRD"), ("v", "VGRD"), ("gh", "HGT"), ("r", "RH"), ("t", "TMP"), ("w", "VVEL")): fields[(gf, f"{L} mb")] = g((ec, "pl", L))
             W.write_time({k: v for k, v in fields.items() if v is not None}, len(times), out)
             times.append(dict(time=(run + pd.Timedelta(hours=step)).strftime("%Y-%m-%dT%H:%MZ"), offset_h=step, kind="analysis" if step == 0 else "forecast"))
             print(f"  ECMWF: +{step} h ({len(f)} fields)")

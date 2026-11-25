@@ -17,12 +17,12 @@ import requests
 LEVELS = [1000, 850, 700, 500, 300, 200]
 SOURCES = ["https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod", "https://noaa-gfs-bdp-pds.s3.amazonaws.com"]
 NY, NX = 181, 360
-SFC = ["mslp", "pwat", "sst", "u10", "v10", "cape", "rain6", "hs", "wu", "wv", "cu", "cv", "sss"]
-LEV = ["u", "v", "hgt", "rh", "tmp"]
+SFC = ["mslp", "pwat", "sst", "u10", "v10", "cape", "rain6", "hs", "wu", "wv", "cu", "cv", "sss", "t2", "rh2"]
+LEV = ["u", "v", "hgt", "rh", "tmp", "w"]                                  # w: vertical motion omega (Pa/s, negative = rising)
 HGT_R = {1000: (-500, 500), 850: (900, 1700), 700: (2300, 3300), 500: (4600, 6000), 300: (8000, 9900), 200: (10400, 12700)}
 TMP_R = {1000: (-50, 45), 850: (-50, 35), 700: (-50, 25), 500: (-60, 5), 300: (-75, -15), 200: (-80, -30)}
 RANGES = dict(mslp=(940, 1060), pwat=(0, 80), sst=(-2, 34), u10=(-40, 40), v10=(-40, 40), cape=(0, 5000), rain6=(0, 100), u=(-100, 100), v=(-100, 100), rh=(0, 100),
-              hs=(0, 15), wu=(-1, 1), wv=(-1, 1), cu=(-2.5, 2.5), cv=(-2.5, 2.5), sss=(28, 40))
+              w=(-3, 3), t2=(-50, 55), rh2=(0, 100), hs=(0, 15), wu=(-1, 1), wv=(-1, 1), cu=(-2.5, 2.5), cv=(-2.5, 2.5), sss=(28, 40))
 RTOFS = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncepRtofsG2DFore3hrlyProg.csv"
 _LM = os.path.join(os.path.dirname(__file__), "landmask-1deg.bin")         # 181 x 360, 1 = land (Natural Earth 1:50m, cell centres)
 STATIC_LAND = (np.fromfile(_LM, np.uint8).reshape(NY, NX) > 0) if os.path.exists(_LM) else np.zeros((NY, NX), bool)
@@ -47,6 +47,56 @@ def waves(cycle, fh, sess):
         else:
             U = V = np.full((NY, NX), np.nan)
     return H, U, V
+
+
+NOMADS_RTOFS = "https://nomads.ncep.noaa.gov/dods/rtofs"
+
+
+def _dods_ascii(text):
+    """Parse a GrADS-DODS .ascii reply into {name: numpy array}."""
+    out, name, rows = {}, None, []
+    def flush():
+        if name is not None and rows: out[name] = np.array(rows, dtype="float64")
+    for line in text.splitlines():
+        line = line.strip()
+        if not line: continue
+        if not line.startswith("[") and ", [" in line:                       # a new variable: "sss, [1][1][180][360]"
+            flush(); name, rows = line.split(",")[0].strip(), []; continue
+        vals = line.split(",")[1:] if line.startswith("[") else line.split(",")
+        try: rows.extend(float(v) for v in vals if v.strip())
+        except ValueError: pass
+    flush(); return out
+
+
+def currents_nomads(sess):
+    """Daily surface currents and salinity from the newest RTOFS run on NOAA NOMADS, as {time: (u, v, sss)}."""
+    import datetime as dt
+    for back in range(3):
+        day = (pd.Timestamp.now("UTC") - pd.Timedelta(days=back)).strftime("%Y%m%d")
+        base = f"{NOMADS_RTOFS}/rtofs_global{day}/rtofs_glo_2ds_forecast_3hrly_prog.ascii"
+        try:
+            sub = "[0:8:56][0][0:12:2159][0:12:4319]"
+            r = sess.get(f"{base}?u_velocity{sub},v_velocity{sub},sss{sub},time[0:8:56],lat[0:12:2159],lon[0:12:4319]", timeout=300)
+            if r.status_code != 200 or "u_velocity" not in r.text[:500]: continue
+            d = _dods_ascii(r.text); lat, lon, tt = d.get("lat"), d.get("lon"), d.get("time")
+            if lat is None or lon is None or tt is None: continue
+            nt, ny, nx = len(tt), len(lat), len(lon)
+            times = [pd.Timestamp(dt.datetime(1, 1, 1) + dt.timedelta(days=float(x) - 2)) for x in tt]   # GrADS: days since 1-1-1
+            if abs((times[0] - pd.Timestamp.now()).days) > 10: continue                                   # sanity check on the time axis
+            j = np.clip(np.round(90 - lat).astype(int), 0, NY - 1); i = np.round(lon % 360).astype(int) % NX
+            J, I = np.meshgrid(j, i, indexing="ij"); out = {}
+            for k in range(nt):
+                parts = []
+                for nm in ("u_velocity", "v_velocity", "sss"):
+                    a = d[nm].reshape(nt, ny, nx)[k]; a = np.where(np.abs(a) > 1e20, np.nan, a)
+                    S, N = np.zeros((NY, NX)), np.zeros((NY, NX)); ok = np.isfinite(a)
+                    np.add.at(S, (J[ok], I[ok]), a[ok]); np.add.at(N, (J[ok], I[ok]), 1)
+                    with np.errstate(invalid="ignore", divide="ignore"): parts.append(np.where(N > 0, S / N, np.nan))
+                out[times[k].floor("h")] = tuple(parts)
+            print(f"  ocean currents and salinity: {len(out)} daily fields from RTOFS {day} (NOMADS)"); return out
+        except Exception as e:
+            print(f"  ocean (NOMADS) {day}: {type(e).__name__} {e}")
+    return {}
 
 
 def currents(sess):
@@ -127,14 +177,15 @@ def write_time(fields, i, out):
     def g(k): v = F(k); return v if v is not None and v.shape == (NY, NX) else miss
     sfc = dict(mslp=g(("PRMSL", "mean sea level")) / 100, pwat=g(("PWAT", "entire atmosphere (considered as a single layer)")),
                sst=g(("TMP", "surface")) - 273.15, u10=g(("UGRD", "10 m above ground")), v10=g(("VGRD", "10 m above ground")),
-               cape=g(("CAPE", "surface")), rain6=g(("APCP", "surface")))
+               cape=g(("CAPE", "surface")), rain6=g(("APCP", "surface")), t2=g(("TMP", "2 m above ground")) - 273.15, rh2=g(("RH", "2 m above ground")))
     w = fields.get("_waves"); c = fields.get("_currents")
     sfc.update(hs=w[0] if w else miss, wu=w[1] if w else miss, wv=w[2] if w else miss, cu=c[0] if c else miss, cv=c[1] if c else miss,
                sss=c[2] if c and len(c) > 2 else miss)
     blob = b"".join(_q(sfc[k], *RANGES[k], mask=(land | (sfc["sst"] < -2.5)) if k == "sst" else None) for k in SFC)
     open(os.path.join(out, f"t{i}_sfc.bin"), "wb").write(blob)
     for p in LEVELS:
-        lv = dict(u=g(("UGRD", f"{p} mb")), v=g(("VGRD", f"{p} mb")), hgt=g(("HGT", f"{p} mb")), rh=g(("RH", f"{p} mb")), tmp=g(("TMP", f"{p} mb")) - 273.15)
+        lv = dict(u=g(("UGRD", f"{p} mb")), v=g(("VGRD", f"{p} mb")), hgt=g(("HGT", f"{p} mb")), rh=g(("RH", f"{p} mb")), tmp=g(("TMP", f"{p} mb")) - 273.15,
+                  w=g(("VVEL", f"{p} mb")))
         rng = dict(RANGES, hgt=HGT_R[p], tmp=TMP_R[p])
         open(os.path.join(out, f"t{i}_l{p}.bin"), "wb").write(b"".join(_q(lv[k], *rng[k]) for k in LEV))
     return int(np.isfinite(sfc["mslp"]).any())
@@ -146,9 +197,10 @@ def build(public, latest=None, sess=None):
     now = pd.Timestamp(latest) if latest is not None else pd.Timestamp.now("UTC").tz_localize(None).floor("6h")
     inst = lambda fh: {"anl"} if fh == 0 else {f"{fh} hour fcst"}
     def want(fh):
-        w = [(v, f"{p} mb", inst(fh)) for p in LEVELS for v in ("UGRD", "VGRD", "HGT", "RH", "TMP")]
+        w = [(v, f"{p} mb", inst(fh)) for p in LEVELS for v in ("UGRD", "VGRD", "HGT", "RH", "TMP", "VVEL")]
         w += [(v, l, inst(fh)) for v, l in [("PRMSL", "mean sea level"), ("PWAT", "entire atmosphere (considered as a single layer)"), ("TMP", "surface"),
-                                            ("LAND", "surface"), ("UGRD", "10 m above ground"), ("VGRD", "10 m above ground"), ("CAPE", "surface")]]
+                                            ("LAND", "surface"), ("UGRD", "10 m above ground"), ("VGRD", "10 m above ground"), ("CAPE", "surface"),
+                                            ("TMP", "2 m above ground"), ("RH", "2 m above ground")]]
         if fh: w.append(("APCP", "surface", {f"{fh - 6}-{fh} hour acc fcst"}))
         return w
     times = []
@@ -169,8 +221,9 @@ def build(public, latest=None, sess=None):
     f0 = fetch_messages(cyc0, 0, want(0), sess)
     if not f0:
         print("::error::weather fields: the analysis could not be downloaded"); return None
-    CUR = currents(sess)
-    plan = [(-48, cyc0 - pd.Timedelta(hours=48), 0), (-24, cyc0 - pd.Timedelta(hours=24), 0), (0, cyc0, 0)] + [(fh, cyc0, fh) for fh in (24, 48, 72, 96, 120)]
+    CUR = currents_nomads(sess) or currents(sess)                           # NOMADS first; ERDDAP's copy only as a fallback
+    if not CUR: print("::warning::ocean currents and salinity: no source answered")
+    plan = [(-h, cyc0 - pd.Timedelta(hours=h), 0) for h in (48, 36, 24, 12)] + [(0, cyc0, 0)] + [(fh, cyc0, fh) for fh in range(12, 121, 12)]
     for i, (off, cyc, fh) in enumerate(plan):
         try:                                                                    # one failing step must not lose the others
             f = f0 if off == 0 else fetch_messages(cyc, fh, want(fh), sess)
