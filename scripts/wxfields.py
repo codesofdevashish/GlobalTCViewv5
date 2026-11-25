@@ -17,12 +17,12 @@ import requests
 LEVELS = [1000, 850, 700, 500, 300, 200]
 SOURCES = ["https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod", "https://noaa-gfs-bdp-pds.s3.amazonaws.com"]
 NY, NX = 181, 360
-SFC = ["mslp", "pwat", "sst", "u10", "v10", "cape", "rain6", "hs", "wu", "wv", "cu", "cv"]
+SFC = ["mslp", "pwat", "sst", "u10", "v10", "cape", "rain6", "hs", "wu", "wv", "cu", "cv", "sss"]
 LEV = ["u", "v", "hgt", "rh", "tmp"]
 HGT_R = {1000: (-500, 500), 850: (900, 1700), 700: (2300, 3300), 500: (4600, 6000), 300: (8000, 9900), 200: (10400, 12700)}
 TMP_R = {1000: (-50, 45), 850: (-50, 35), 700: (-50, 25), 500: (-60, 5), 300: (-75, -15), 200: (-80, -30)}
 RANGES = dict(mslp=(940, 1060), pwat=(0, 80), sst=(-2, 34), u10=(-40, 40), v10=(-40, 40), cape=(0, 5000), rain6=(0, 100), u=(-100, 100), v=(-100, 100), rh=(0, 100),
-              hs=(0, 15), wu=(-1, 1), wv=(-1, 1), cu=(-2.5, 2.5), cv=(-2.5, 2.5))
+              hs=(0, 15), wu=(-1, 1), wv=(-1, 1), cu=(-2.5, 2.5), cv=(-2.5, 2.5), sss=(28, 40))
 RTOFS = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncepRtofsG2DFore3hrlyProg.csv"
 _LM = os.path.join(os.path.dirname(__file__), "landmask-1deg.bin")         # 181 x 360, 1 = land (Natural Earth 1:50m, cell centres)
 STATIC_LAND = (np.fromfile(_LM, np.uint8).reshape(NY, NX) > 0) if os.path.exists(_LM) else np.zeros((NY, NX), bool)
@@ -53,18 +53,21 @@ def currents(sess):
     """Daily surface currents (m/s) from NOAA RTOFS (latest run, via ERDDAP), as {time: (u, v)} on the 1-degree grid."""
     try:
         sub = "%5B0:8:63%5D%5B0%5D%5B(-78):12:(89.9)%5D%5B(74.2):12:(434.0)%5D"           # every 24 h (3-hourly steps), surface, ~1 degree
-        r = sess.get(f"{RTOFS}?u_velocity{sub},v_velocity{sub}", timeout=300); r.raise_for_status()
+        r = sess.get(f"{RTOFS}?u_velocity{sub},v_velocity{sub},sss{sub}", timeout=300); r.raise_for_status()
         import io
         df = pd.read_csv(io.StringIO(r.text), skiprows=[1])
     except Exception as e:
         print("  ocean currents unavailable:", type(e).__name__, e); return {}
     out = {}
     for tm, g in df.groupby("time"):
-        U, V, N = np.zeros((NY, NX)), np.zeros((NY, NX)), np.zeros((NY, NX))
-        g = g.dropna(subset=["u_velocity", "v_velocity"]); g = g[(g.u_velocity.abs() < 10) & (g.v_velocity.abs() < 10)]
-        j = np.clip(np.round(90 - g.latitude.values).astype(int), 0, NY - 1); i = np.round(g.longitude.values % 360).astype(int) % NX
-        np.add.at(U, (j, i), g.u_velocity.values); np.add.at(V, (j, i), g.v_velocity.values); np.add.at(N, (j, i), 1)
-        with np.errstate(invalid="ignore", divide="ignore"): out[pd.Timestamp(tm.replace("Z", ""))] = (np.where(N > 0, U / N, np.nan), np.where(N > 0, V / N, np.nan))
+        U, V, N, SS, NS = np.zeros((NY, NX)), np.zeros((NY, NX)), np.zeros((NY, NX)), np.zeros((NY, NX)), np.zeros((NY, NX))
+        j_ = lambda d: np.clip(np.round(90 - d.latitude.values).astype(int), 0, NY - 1); i_ = lambda d: np.round(d.longitude.values % 360).astype(int) % NX
+        c = g.dropna(subset=["u_velocity", "v_velocity"]); c = c[(c.u_velocity.abs() < 10) & (c.v_velocity.abs() < 10)]
+        np.add.at(U, (j_(c), i_(c)), c.u_velocity.values); np.add.at(V, (j_(c), i_(c)), c.v_velocity.values); np.add.at(N, (j_(c), i_(c)), 1)
+        if "sss" in g:                                                       # sea surface salinity (PSU)
+            sv = g.dropna(subset=["sss"]); sv = sv[(sv.sss > 0) & (sv.sss < 45)]; np.add.at(SS, (j_(sv), i_(sv)), sv.sss.values); np.add.at(NS, (j_(sv), i_(sv)), 1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            out[pd.Timestamp(tm.replace("Z", ""))] = (np.where(N > 0, U / N, np.nan), np.where(N > 0, V / N, np.nan), np.where(NS > 0, SS / NS, np.nan))
     print(f"  ocean currents: {len(out)} daily fields from RTOFS")
     return out
 
@@ -126,7 +129,8 @@ def write_time(fields, i, out):
                sst=g(("TMP", "surface")) - 273.15, u10=g(("UGRD", "10 m above ground")), v10=g(("VGRD", "10 m above ground")),
                cape=g(("CAPE", "surface")), rain6=g(("APCP", "surface")))
     w = fields.get("_waves"); c = fields.get("_currents")
-    sfc.update(hs=w[0] if w else miss, wu=w[1] if w else miss, wv=w[2] if w else miss, cu=c[0] if c else miss, cv=c[1] if c else miss)
+    sfc.update(hs=w[0] if w else miss, wu=w[1] if w else miss, wv=w[2] if w else miss, cu=c[0] if c else miss, cv=c[1] if c else miss,
+               sss=c[2] if c and len(c) > 2 else miss)
     blob = b"".join(_q(sfc[k], *RANGES[k], mask=(land | (sfc["sst"] < -2.5)) if k == "sst" else None) for k in SFC)
     open(os.path.join(out, f"t{i}_sfc.bin"), "wb").write(blob)
     for p in LEVELS:

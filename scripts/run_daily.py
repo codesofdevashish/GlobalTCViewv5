@@ -135,6 +135,11 @@ def main():
         wm = W.build(a.public, None)
         if wm: TC.build(a.public, pd.Timestamp(wm["cycle"].replace("Z", "")))   # 5-day rain, wind and sea for coastal towns
         else: print("::warning::live map: no new GFS fields this run")
+        try:
+            import ecmwf as EC
+            EC.build(a.public)                                              # second model: ECMWF IFS open data
+        except Exception:
+            traceback.print_exc(); print("::warning::ECMWF step failed (the map keeps GFS)")
     except Exception:
         traceback.print_exc(); print("::warning::live map step failed")
     os.makedirs(os.path.join(a.public, "videos"), exist_ok=True); os.makedirs(os.path.join(a.public, "data"), exist_ok=True)
